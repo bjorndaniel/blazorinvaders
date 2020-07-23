@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 
 <head>
@@ -55,11 +55,29 @@
     <script>
         function gameLoop(timeStamp) {
             window.requestAnimationFrame(gameLoop);
-            theInstance.invokeMethodAsync('GameLoop', timeStamp);
+            game.instance.invokeMethodAsync('GameLoop', timeStamp, game.canvas.width, game.canvas.height);
+        }
+
+        function onResize() {
+            if (!window.game.canvas) {
+                return;
+            }
+            const canvasContainer = document.getElementById('canvasContainer');
+            game.canvas.width = canvasContainer.clientWidth * 0.95;
+            game.canvas.height = canvasContainer.clientHeight * 0.95;
         }
 
         window.initGame = (instance) => {
-            window.theInstance = instance;
+            const canvasContainer = document.getElementById('canvasContainer'),
+                canvases = canvasContainer.getElementsByTagName('canvas') || [];
+            window.game = {
+                instance: instance,
+                canvas: canvases.length ? canvases[0] : null
+            };
+
+            window.addEventListener("resize", onResize);
+            onResize();
+
             window.requestAnimationFrame(gameLoop);
         };
     </script>

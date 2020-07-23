@@ -10,40 +10,35 @@
         <p>Built using Blazor</p>
     </div>
 </div>
-<div class="row justify-content-center">
-    <div class="col text-center" id="theCanvas">
-        <BECanvas Width="300" Height="400" @ref="_canvasReference"></BECanvas>
+<div class="row justify-content-center h-75 game-canvas">
+    <div class="col text-center" id="canvas">
+        <div class="game-canvas" id="canvasContainer">
+            <BECanvas @ref="_canvas"></BECanvas>
+        </div>
     </div>
 </div>
-
+<img @ref="_spritesheet" hidden src="assets/blazor.png" />
 @code{
-    
-    BECanvasComponent _canvasReference = null;
-    Canvas2DContext _outputCanvasContext;
-    protected override async Task OnInitializedAsync()
-    {
-        await JsRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this));
-        await base.OnInitializedAsync();
-    }
+
+    BECanvasComponent _canvas;
+    ElementReference _spritesheet;
+
+    Canvas2DContext _context;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            _outputCanvasContext = await _canvasReference.CreateCanvas2DAsync();
-            await _outputCanvasContext.SetTextBaselineAsync(TextBaseline.Top);
+            await JsRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this));
+            _context = await _canvas.CreateCanvas2DAsync();
         }
     }
-    
+
     [JSInvokable]
-    public async ValueTask GameLoop(float timeStamp)
+    public async ValueTask GameLoop(float timeStamp, int width, int height)
     {
-        await _outputCanvasContext.ClearRectAsync(0, 0, 300, 400);
+        await _context.ClearRectAsync(0, 0, width, height);
 
-        await _outputCanvasContext.SetFillStyleAsync("green");
-        await _outputCanvasContext.FillRectAsync(10, 50, 300, 100);
-
-        await _outputCanvasContext.SetFontAsync("24px verdana");
-        await _outputCanvasContext.StrokeTextAsync($"time: {timeStamp}", 20, 80);
+        await _context.DrawImageAsync(_spritesheet, 0, 0, width / 2, height / 2);
     }
 }
