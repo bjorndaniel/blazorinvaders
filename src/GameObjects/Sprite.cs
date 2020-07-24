@@ -5,7 +5,12 @@ namespace BlazorInvaders.GameObjects
 {
     public class Sprite
     {
-        public Size Size { get; set; }
-        public ElementReference SpriteSheet{ get; set; }
+        public Sprite(int x1, int y1, int x2, int y2)
+        {
+            TopLeft = new Point(x1, y1);
+            BottomRight = new Point(x2, y2);
+        }
+        public Point TopLeft { get; set; }
+        public Point BottomRight { get; set; }
     }
 }

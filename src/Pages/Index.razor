@@ -11,24 +11,26 @@
         <p>Built using Blazor</p>
     </div>
 </div>
-<div class="row justify-content-center h-75 game-canvas">
+<div class="row justify-content-center">
     <div class="col text-center" id="canvas">
         <div class="game-canvas" id="canvasContainer">
             <BECanvas @ref="_canvas"></BECanvas>
         </div>
     </div>
 </div>
-<img @ref="_spritesheet" hidden src="assets/blazor.png" />
+<div class="row">
+    <div class="col text-center">
+        <button class="btn btn-success" @onclick:preventDefault @onclick="StartGame">Start</button>
+    </div>
+</div>
+<img @ref="_spritesheet" hidden src="assets/sprites.png" />
 @code{
 
-        BECanvasComponent _canvas;
-        ElementReference _spritesheet;
-        Canvas2DContext _context;
-        Point _spritePosition = Point.Empty;
-        Point _spriteDirection = new Point(1, 1);
-        float _spriteSpeed = 0.25f;
-        Sprite _sprite;
-        readonly GameTime _gameTime = new GameTime();
+    BECanvasComponent _canvas;
+    ElementReference _spritesheet;
+    Canvas2DContext _context;
+    readonly GameTime _gameTime = new GameTime();
+    private Game _game;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -36,11 +38,7 @@
         {
             await JsRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this));
             _context = await _canvas.CreateCanvas2DAsync();
-            _sprite = new Sprite()
-            {
-                Size = new Size(200, 200),
-                SpriteSheet = _spritesheet
-            };
+            _game = new Game();
         }
     }
 
@@ -48,31 +46,37 @@
     public async ValueTask GameLoop(float timeStamp, int screenWidth, int screenHeight)
     {
         _gameTime.TotalTime = timeStamp;
-
         await Update(screenWidth, screenHeight);
         await Render(screenWidth, screenHeight);
     }
 
     private async ValueTask Update(int screenWidth, int screenHeight)
     {
-        if (_spritePosition.X + _sprite.Size.Width >= screenWidth || _spritePosition.X < 0)
-        {
-            _spriteDirection.X = -_spriteDirection.X;
-        }
 
-        if (_spritePosition.Y + _sprite.Size.Height >= screenHeight || _spritePosition.Y < 0)
-        {
-            _spriteDirection.Y = -_spriteDirection.Y;
-        }
-
-        _spritePosition.X += (int)(_spriteDirection.X * _spriteSpeed * _gameTime.ElapsedTime);
-        _spritePosition.Y += (int)(_spriteDirection.Y * _spriteSpeed * _gameTime.ElapsedTime);
     }
 
     private async ValueTask Render(int width, int height)
     {
         await _context.ClearRectAsync(0, 0, width, height);
-        await _context.DrawImageAsync(_sprite.SpriteSheet, _spritePosition.X, _spritePosition.Y, _sprite.Size.Width, _sprite.Size.Height);
+        if (_game.Started)
+        {
+            List<Task> draw = new List<Task>();
+            foreach (var a in _game.Aliens)
+            {
+                Console.WriteLine($"{a.CurrentPosition.X}, {a.CurrentPosition.Y},");
+                //draw.Add
+                //(
+                await _context.DrawImageAsync(_spritesheet,
+                a.Sprite.TopLeft.X, a.Sprite.TopLeft.Y, 20, 14, a.CurrentPosition.X, a.CurrentPosition.Y, 40, 28);
+                //);
+            }
+            //await Task.WhenAll(draw);
+        }
+    }
+
+    private void StartGame()
+    {
+        _game.Start(_spritesheet);
     }
 
 }
