@@ -2,8 +2,14 @@
 {
     public enum AlienType
     {
-        Red,
-        Yellow,
-        White
+        Squid,
+        Crab,
+        Octopus
+    }
+
+    public enum Direction
+    {
+        Right,
+        Left,
     }
 }

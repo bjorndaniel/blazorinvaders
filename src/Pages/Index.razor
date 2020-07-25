@@ -52,7 +52,7 @@
 
     private async ValueTask Update(int screenWidth, int screenHeight)
     {
-
+        _game.Update(_gameTime);
     }
 
     private async ValueTask Render(int width, int height)
@@ -60,14 +60,14 @@
         await _context.ClearRectAsync(0, 0, width, height);
         if (_game.Started)
         {
-            List<Task> draw = new List<Task>();
+            //var draw = new List<Task>();
+            int counter = 0;
             foreach (var a in _game.Aliens)
             {
-                Console.WriteLine($"{a.CurrentPosition.X}, {a.CurrentPosition.Y},");
                 //draw.Add
                 //(
                 await _context.DrawImageAsync(_spritesheet,
-                a.Sprite.TopLeft.X, a.Sprite.TopLeft.Y, 20, 14, a.CurrentPosition.X, a.CurrentPosition.Y, 40, 28);
+                 a.Sprite.TopLeft.X, a.Sprite.TopLeft.Y, 20, 14, a.CurrentPosition.X, a.CurrentPosition.Y, 40, 28);
                 //);
             }
             //await Task.WhenAll(draw);
@@ -76,7 +76,7 @@
 
     private void StartGame()
     {
-        _game.Start(_spritesheet);
+        _game.Start(_spritesheet, _gameTime);
     }
 
 }
