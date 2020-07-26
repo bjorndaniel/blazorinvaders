@@ -42,5 +42,11 @@ namespace BlazorInvaders.GameObjects
             HasBeenHit = new Rectangle(CurrentPosition, Sprite.RenderSize).IntersectsWith(new Rectangle(s.CurrentPosition, s.Sprite.RenderSize));
             return HasBeenHit;
         }
+
+        public bool Collision(Alien a)
+        {
+            HasBeenHit = new Rectangle(CurrentPosition, Sprite.RenderSize).IntersectsWith(new Rectangle(a.CurrentPosition, a.Sprite.RenderSize));
+            return HasBeenHit;
+        }
     }
 }

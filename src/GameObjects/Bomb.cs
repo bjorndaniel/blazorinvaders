@@ -8,13 +8,13 @@ namespace BlazorInvaders.GameObjects
         Point _currentPosition;
         public Bomb(Point start)
         {
-            _bomb = new Sprite(0, 69, 5, 11);
+            _bomb = new Sprite(0, 69, 5, 80);
             _currentPosition = start;
         }
         public Sprite Sprite => _bomb;
         public bool Remove { get; set; }
         public Point CurrentPosition => _currentPosition;
-        public void Move() =>    
-            _currentPosition = new Point(_currentPosition.X, _currentPosition.Y + 20);
+        public void Move() =>
+            _currentPosition = new Point(_currentPosition.X, _currentPosition.Y + 10);
     }
 }

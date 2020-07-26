@@ -4,6 +4,7 @@
 @using System.Drawing
 @using BlazorInvaders.GameObjects
 @inject IJSRuntime JsRuntime;
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
 
 <div class="row">
     <div class="col text-center">
@@ -29,7 +30,7 @@
     {
         if (firstRender)
         {
-            _game = new Game(870, 500);
+            _game = new Game(870, 500, localStorage);
             await _game.Init(_canvas, _spriteSheet);
             await JsRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this), 870, 500);
 
@@ -49,21 +50,20 @@
     [JSInvokable]
     public void StartGame(float timeStamp)
     {
-        _game.Start(_spriteSheet, timeStamp);
+        _game.Start(timeStamp);
     }
 
     protected async ValueTask KeyDown(KeyboardEventArgs e)
     {
-        Console.WriteLine($"{e.Key} {e.Code}");
         if (e.Code == "ArrowLeft")
         {
             _game.MovePlayer(Direction.Left);
         }
-        if(e.Code == "ArrowRight")
+        if (e.Code == "ArrowRight")
         {
             _game.MovePlayer(Direction.Right);
         }
-        if(e.Code == "Space")
+        if (e.Code == "Space")
         {
             if (_game.Started)
             {
@@ -73,8 +73,6 @@
             {
                 await JsRuntime.InvokeAsync<object>("startGame");
             }
-
-
         }
     }
 }
