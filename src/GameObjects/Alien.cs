@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 
 namespace BlazorInvaders.GameObjects
@@ -7,12 +7,12 @@ namespace BlazorInvaders.GameObjects
     {
         Sprite _still;
         Sprite _moving;
+        Sprite _current;
+        Sprite _explosion;
         bool _isMoved;
-        ElementReference _spriteSheet;
         
-        public Alien(AlienType type, Point startPosition, ElementReference spriteSheet)
+        public Alien(AlienType type, Point startPosition, int column, int row)
         {
-            _spriteSheet = spriteSheet;
             CurrentPosition = startPosition;
             (_still, _moving) = type switch
             {
@@ -22,34 +22,47 @@ namespace BlazorInvaders.GameObjects
                     (new Sprite(20, 14, 40, 26), new Sprite(0, 14, 20, 26)),
                 _ => (new Sprite(0, 27, 20, 40), new Sprite(20, 27, 40, 40)),
             };
-            Sprite = _still;
+            _current = _still;
+            _explosion = new Sprite(0, 59, 17, 69);
+            Column = column;
+            Row = row;
         }
-
-        public bool Destroyed { get; set; }
-
-        public bool Hit { get; set; }
 
         public Point CurrentPosition { get; set; }
 
-        public Sprite Sprite { get; private set; }
+        public Sprite Sprite => HasBeenHit ? _explosion : _current;
 
-        internal void MoveDown() =>
+        public void MoveDown() =>
             CurrentPosition = new Point { X = CurrentPosition.X, Y = CurrentPosition.Y + 20 };
 
-        internal void MoveHorizontal(Direction direction)
+        public void MoveHorizontal(Direction direction)
         {
             var x = direction == Direction.Left ? CurrentPosition.X - 10 : CurrentPosition.X + 10;
             CurrentPosition = new Point { X = x, Y = CurrentPosition.Y };
             if (_isMoved)
             {
-                Sprite = _still;
+                _current = _still;
             }
             else
             {
-                Sprite = _moving;
+                _current = _moving;
             }
             _isMoved = !_isMoved;
         }
+
+        public bool HasBeenHit { get; set; }
+
+        public int Column { get; private set; }
+
+        public int Row { get; private set; }
+
+        public bool Destroyed { get; set; }
+
+        public bool Collision(Shot s)
+        {
+            HasBeenHit = new Rectangle(CurrentPosition, Sprite.RenderSize).IntersectsWith(new Rectangle(s.CurrentPosition, s.Sprite.RenderSize));
+            return HasBeenHit;
+        }
     }
-            
-}
+} 
+  

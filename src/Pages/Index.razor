@@ -7,76 +7,74 @@
 
 <div class="row">
     <div class="col text-center">
-        <h2>BlazorInvaders - a Space Invaders implementation</h2>
-        <p>Built using Blazor</p>
+        <h2>Blazor Invaders - a Space Invaders implementation</h2>
     </div>
 </div>
 <div class="row justify-content-center">
     <div class="col text-center" id="canvas">
-        <div class="game-canvas" id="canvasContainer">
+        <div tabindex="0" @onkeydown="@(async (e) => { await KeyDown(e); })" @onkeydown:preventDefault class="game-canvas" id="canvasContainer">
             <BECanvas @ref="_canvas"></BECanvas>
         </div>
     </div>
 </div>
-<div class="row">
-    <div class="col text-center">
-        <button class="btn btn-success" @onclick:preventDefault @onclick="StartGame">Start</button>
-    </div>
-</div>
-<img @ref="_spritesheet" hidden src="assets/sprites.png" />
+
+<img @ref="_spriteSheet" hidden src="assets/sprites.png" />
 @code{
 
     BECanvasComponent _canvas;
-    ElementReference _spritesheet;
-    Canvas2DContext _context;
-    readonly GameTime _gameTime = new GameTime();
-    private Game _game;
+    ElementReference _spriteSheet;
+    Game _game;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await JsRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this));
-            _context = await _canvas.CreateCanvas2DAsync();
-            _game = new Game();
+            _game = new Game(870, 500);
+            await _game.Init(_canvas, _spriteSheet);
+            await JsRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this), 870, 500);
+
         }
     }
 
     [JSInvokable]
-    public async ValueTask GameLoop(float timeStamp, int screenWidth, int screenHeight)
+    public async ValueTask GameLoop(float timeStamp)
     {
-        _gameTime.TotalTime = timeStamp;
-        await Update(screenWidth, screenHeight);
-        await Render(screenWidth, screenHeight);
-    }
-
-    private async ValueTask Update(int screenWidth, int screenHeight)
-    {
-        _game.Update(_gameTime);
-    }
-
-    private async ValueTask Render(int width, int height)
-    {
-        await _context.ClearRectAsync(0, 0, width, height);
         if (_game.Started)
         {
-            //var draw = new List<Task>();
-            int counter = 0;
-            foreach (var a in _game.Aliens)
+            _game.Update(timeStamp);
+        }
+        await _game.Render();
+    }
+
+    [JSInvokable]
+    public void StartGame(float timeStamp)
+    {
+        _game.Start(_spriteSheet, timeStamp);
+    }
+
+    protected async ValueTask KeyDown(KeyboardEventArgs e)
+    {
+        Console.WriteLine($"{e.Key} {e.Code}");
+        if (e.Code == "ArrowLeft")
+        {
+            _game.MovePlayer(Direction.Left);
+        }
+        if(e.Code == "ArrowRight")
+        {
+            _game.MovePlayer(Direction.Right);
+        }
+        if(e.Code == "Space")
+        {
+            if (_game.Started)
             {
-                //draw.Add
-                //(
-                await _context.DrawImageAsync(_spritesheet,
-                 a.Sprite.TopLeft.X, a.Sprite.TopLeft.Y, 20, 14, a.CurrentPosition.X, a.CurrentPosition.Y, 40, 28);
-                //);
+                _game.Fire();
             }
-            //await Task.WhenAll(draw);
+            else
+            {
+                await JsRuntime.InvokeAsync<object>("startGame");
+            }
+
+
         }
     }
-
-    private void StartGame()
-    {
-        _game.Start(_spritesheet, _gameTime);
-    }
-
 }

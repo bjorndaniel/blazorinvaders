@@ -54,31 +54,30 @@
     <script>
         function gameLoop(timeStamp) {
             window.requestAnimationFrame(gameLoop);
-            game.instance.invokeMethodAsync('GameLoop', timeStamp, game.canvas.width, game.canvas.height);
+            game.instance.invokeMethodAsync('GameLoop', timeStamp);
         }
 
-        function onResize() {
-            if (!window.game.canvas) {
-                return;
-            }
-            //const canvasContainer = document.getElementById('canvasContainer');
-            game.canvas.width = 870;//canvasContainer.clientWidth * 0.95;
-            game.canvas.height = 760;//canvasContainer.clientHeight * 0.95;
-        }
-
-        window.initGame = (instance) => {
+        window.initGame = (instance, width, height) => {
             const canvasContainer = document.getElementById('canvasContainer'),
                 canvases = canvasContainer.getElementsByTagName('canvas') || [];
+            canvasContainer.style.width = `${width}px`;
+            canvasContainer.style.height = `${height}px`;
             window.game = {
                 instance: instance,
                 canvas: canvases.length ? canvases[0] : null
             };
-
-            window.addEventListener("resize", onResize);
-            onResize();
-
+            window.game.canvas.width = width;
+            window.game.canvas.height = height;
             window.requestAnimationFrame(gameLoop);
+            canvasContainer.focus();
+
         };
+        window.startGame = () => {
+            window.requestAnimationFrame((t) => {
+                game.instance.invokeMethodAsync('StartGame', t);
+            });
+        };
+       
     </script>
 </body>
 

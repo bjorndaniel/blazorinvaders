@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
-using System.Drawing;
+﻿using System.Drawing;
 
 namespace BlazorInvaders.GameObjects
 {
@@ -12,5 +11,7 @@ namespace BlazorInvaders.GameObjects
         }
         public Point TopLeft { get; set; }
         public Point BottomRight { get; set; }
+        public Size RenderSize => new Size((BottomRight.X - TopLeft.X)  * 2, (BottomRight.Y - TopLeft.Y) * 2);
+        public Size Size => new Size(BottomRight.X - TopLeft.X, BottomRight.Y - TopLeft.Y);
     }
 }
