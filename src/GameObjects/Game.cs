@@ -156,12 +156,11 @@ namespace BlazorInvaders.GameObjects
                     s.Remove = true;
                     _points += 100;
                 }
-                if (_motherShip != null)
+                if (_motherShip != null && !_motherShip.HasBeenHit)
                 {
                     if (_motherShip.Collision(s))
                     {
                         _points += 1000;
-                        _motherShip = null;
                     }
                 }
             }
@@ -194,12 +193,20 @@ namespace BlazorInvaders.GameObjects
                     _lives = 0;
                     GameOver = true;
                 }
+                if (_motherShip?.Destroyed ?? false)
+                {
+                    _motherShip = null;
+                }
+                if (_motherShip?.HasBeenHit ?? false)
+                {
+                    _motherShip.Destroyed = true;
+                }
             }
         }
 
         private void UpdateBombs()
         {
-            if ((!_bombs.Any() || _bombs.All(_ => _.Remove)) && _random.Next(100) > (75 + (_aliens.Count(_ => _.Destroyed) / 2)))
+            if ((!_bombs.Any() || _bombs.All(_ => _.Remove)) && _random.Next(0,100) > (85 + (_aliens.Count(_ => _.Destroyed) / 5)))
             {
                 var xColumn = _random.Next(0, 10);
                 var alien = _aliens.OrderByDescending(_ => _.CurrentPosition.Y).FirstOrDefault(_ => _.Column == xColumn && !_.Destroyed);
@@ -279,7 +286,7 @@ namespace BlazorInvaders.GameObjects
             }
             var ship = Player.Sprite;
             await _context.DrawImageAsync(_spriteSheet,
-                ship.TopLeft.X, ship.TopLeft.Y, 18, 12, Player.CurrentPosition.X, Player.CurrentPosition.Y, 36, 24); //TODO: Remove hardcoded sizes
+                ship.TopLeft.X, ship.TopLeft.Y, ship.Size.Width, ship.Size.Height, Player.CurrentPosition.X, Player.CurrentPosition.Y, ship.RenderSize.Width, ship.RenderSize.Height); 
             foreach (var s in _shots.Where(_ => !_.Remove))
             {
                 if (s.CurrentPosition.Y <= 0)
@@ -288,7 +295,7 @@ namespace BlazorInvaders.GameObjects
                     continue;
                 }
                 await _context.DrawImageAsync(_spriteSheet,
-                    s.Sprite.TopLeft.X, s.Sprite.TopLeft.Y, 20, 14, s.CurrentPosition.X, s.CurrentPosition.Y, 40, 28); //TODO: Remove hardcoded sizes
+                    s.Sprite.TopLeft.X, s.Sprite.TopLeft.Y, s.Sprite.Size.Width, s.Sprite.Size.Height, s.CurrentPosition.X, s.CurrentPosition.Y, s.Sprite.RenderSize.Width, s.Sprite.RenderSize.Height); 
             }
             foreach (var b in _bombs.Where(_ => !_.Remove))
             {
@@ -304,7 +311,10 @@ namespace BlazorInvaders.GameObjects
             }
             if (_motherShip != null)
             {
-                _motherShip.Move();
+                if (!_motherShip.HasBeenHit)
+                {
+                    _motherShip.Move();
+                }
                 if (_motherShip.CurrentPosition.X < 0)
                 {
                     _motherShip = null;
@@ -313,6 +323,7 @@ namespace BlazorInvaders.GameObjects
                 {
                     await _context.DrawImageAsync(_spriteSheet,
                    _motherShip.Sprite.TopLeft.X, _motherShip.Sprite.TopLeft.Y, _motherShip.Sprite.Size.Width, _motherShip.Sprite.Size.Height, _motherShip.CurrentPosition.X, _motherShip.CurrentPosition.Y, _motherShip.Sprite.RenderSize.Width, _motherShip.Sprite.RenderSize.Height); //TODO: Remove hardcoded sizes
+
                 }
             }
         }

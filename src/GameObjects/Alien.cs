@@ -17,10 +17,10 @@ namespace BlazorInvaders.GameObjects
             (_still, _moving) = type switch
             {
                 AlienType.Crab =>
-                    (new Sprite(0, 0, 20, 14), new Sprite(20, 0, 40, 14)),
+                    (new Sprite(0, 0, 20, 12), new Sprite(20, 0, 40, 14)),
                 AlienType.Octopus =>
-                    (new Sprite(20, 14, 40, 26), new Sprite(0, 14, 20, 26)),
-                _ => (new Sprite(0, 27, 20, 40), new Sprite(20, 27, 40, 40)),
+                    (new Sprite(20, 14, 40, 26), new Sprite(0, 12, 20, 27)),
+                _ => (new Sprite(0, 27, 20, 41), new Sprite(20, 27, 40, 41)),
             };
             _current = _still;
             _explosion = new Sprite(0, 59, 17, 69);

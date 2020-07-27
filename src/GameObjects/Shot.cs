@@ -8,7 +8,7 @@ namespace BlazorInvaders.GameObjects
         Point _currentPosition;
         public Shot(Point start)
         {
-            _beam = new Sprite(20, 60, 21, 61);
+            _beam = new Sprite(20, 60, 22, 66);
             _currentPosition = start;
         }
         public Sprite Sprite => _beam;
