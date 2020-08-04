@@ -1,0 +1,27 @@
+{
+  "bindings": [
+    {
+      "authLevel": "function",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": [
+        "post"
+      ]
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
+    },
+    {
+      "type": "cosmosDB",
+      "direction": "out",
+      "name": "saveHighScore",
+      "databaseName": "blazorinvaders",
+      "collectionName": "highscores",
+      "createIfNotExists": "true",
+      "connectionStringSetting": "bjorndanielcosmos_DOCUMENTDB"
+    }
+  ]
+}

@@ -1,10 +1,11 @@
 ﻿@page "/"
 @using Blazor.Extensions
 @using Blazor.Extensions.Canvas.Canvas2D
-@using System.Drawing
 @using BlazorInvaders.GameObjects
 @inject IJSRuntime JsRuntime;
-@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject IConfiguration Config
+@inject HttpClient Http
+@inject IModalService Modal
 
 <div class="row">
     <div class="col text-center">
@@ -21,19 +22,19 @@
 
 <img @ref="_spriteSheet" hidden src="assets/sprites_cleaned.png" />
 @code{
-
     BECanvasComponent _canvas;
     ElementReference _spriteSheet;
     Game _game;
+    bool _disableKeyboard = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            _game = new Game(870, 500, localStorage);
+            _game = new Game(870, 500, Config, Http);
             await _game.Init(_canvas, _spriteSheet);
             await JsRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this), 870, 500);
-
+            _game.NewHighScore += HighScore;
         }
     }
 
@@ -55,6 +56,10 @@
 
     protected async ValueTask KeyDown(KeyboardEventArgs e)
     {
+        if (_disableKeyboard)
+        {
+            return;
+        }
         if (e.Code == "ArrowLeft")
         {
             _game.MovePlayer(Direction.Left);
@@ -75,4 +80,19 @@
             }
         }
     }
+    private async Task HighScore(object sender, EventArgs args)
+    {
+        _disableKeyboard = true;
+        var highScoreModal = Modal.Show<SetHighScore>("New High score!");
+        var result = await highScoreModal.Result;
+        if (!result.Cancelled)
+        {
+            var score = result.Data as HighScore;
+            score.Score = _game.HighScore;
+            _game.HighScoreName = score.Name;
+            await Http.PostAsJsonAsync($"{Config["FunctionsApi"]}/SaveHighScore", score);
+        }
+        _disableKeyboard = false;
+    }
+
 }

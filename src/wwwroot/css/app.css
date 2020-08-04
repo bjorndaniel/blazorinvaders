@@ -189,8 +189,35 @@ body {
     right: 0.75rem;
     top: 0.5rem;
 }
-.game-canvas{
+
+.game-canvas {
     min-height: 500px;
     min-width: 800px;
     background: #000;
+}
+
+.blazored-modal-title {
+    color: #000;
+    text-shadow: none;
+}
+
+.blazored-modal-content label {
+    color: #000;
+    text-shadow: none;
+    font-size: large;
+    font-weight: bold;
+}
+
+.blazored-modal-content .initials {
+    color: #000;
+    text-shadow: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: 4px solid #000;
+    text-transform: uppercase;
+    font-size: xxx-large;
+    width: 50px;
+    text-align: center;
+    outline: none;
 }

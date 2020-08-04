@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using System.Drawing;
 using System.Linq;
-using System.Runtime.InteropServices.ComTypes;
+using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Blazor.Extensions;
 using Blazor.Extensions.Canvas.Canvas2D;
 using Microsoft.AspNetCore.Components;
-using Blazored.LocalStorage;
+using Microsoft.Extensions.Configuration;
 
 namespace BlazorInvaders.GameObjects
 {
@@ -30,25 +30,30 @@ namespace BlazorInvaders.GameObjects
         int _lives;
         Random _random = new Random();
         private bool _lostALife;
-        private int _highScore;
-        private ILocalStorageService _localStorage;
-        private MotherShip _motherShip;
 
-        public Game(int gameWidth, int gameHeight, ILocalStorageService localStorage)
+        private MotherShip _motherShip;
+        private readonly HttpClient _client;
+        private readonly string _apiUrl;
+        public string HighScoreName { get; set; }
+
+        public event Func<object, EventArgs, Task> NewHighScore;
+
+        public Game(int gameWidth, int gameHeight, IConfiguration config, HttpClient client)
         {
             _width = gameWidth;
             _height = gameHeight;
-            _localStorage = localStorage;
+            _apiUrl = config["FunctionsApi"];
+            _client = client;
         }
 
         public async ValueTask Init(BECanvasComponent canvas, ElementReference spriteSheet)
         {
             _context = await canvas.CreateCanvas2DAsync();
             _spriteSheet = spriteSheet;
-            if (await _localStorage.ContainKeyAsync("BlazorInvadersHighScore"))
-            {
-                _highScore = await _localStorage.GetItemAsync<int>("BlazorInvadersHighScore");
-            }
+            var result = await _client.GetAsync($"{_apiUrl}/gethighscore");
+            var highScore = JsonSerializer.Deserialize<HighScore>(await result.Content.ReadAsStringAsync().ConfigureAwait(false));
+            HighScore = highScore.Score;
+            HighScoreName = highScore.Name;
         }
 
         public void Start(float time)
@@ -101,7 +106,7 @@ namespace BlazorInvaders.GameObjects
             await _context.BeginBatchAsync();
             await _context.SetFillStyleAsync("white");
             await _context.SetFontAsync("32px consolas");
-            var text = $"Points: {_points.ToString("D3")} High score: {_highScore} Lives: {_lives.ToString("D3")}";
+            var text = $"Points: {_points.ToString("D3")} High score: {HighScore} {HighScoreName} Lives: {_lives.ToString("D3")}";
             var length = await _context.MeasureTextAsync(text);
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), 25);
             if (GameOver)
@@ -136,11 +141,13 @@ namespace BlazorInvaders.GameObjects
 
         public bool GameOver { get; private set; }
 
+        public int HighScore { get; private set; }
+
         public IEnumerable<Alien> Aliens => _aliens;
 
         public Player Player => _player;
 
-        public void MovePlayer(Direction direction) => Player.Move(10, direction);
+        public void MovePlayer(Direction direction) => Player.Move(20, direction);
 
         public void Fire() =>
             _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 13, Player.CurrentPosition.Y)));
@@ -188,7 +195,7 @@ namespace BlazorInvaders.GameObjects
                     _aliens.ForEach(_ => _.MoveHorizontal(_currentMovement));
                 }
                 _aliens.Where(_ => _.HasBeenHit).ToList().ForEach(_ => _.Destroyed = true);
-                if (_aliens.Any(_ => _player.Collision(_)))
+                if (_aliens.Any(_ => !_.Destroyed && _player.Collision(_)) || Aliens.Any(_ => !_.Destroyed && _.CurrentPosition.Y > 500))
                 {
                     _lives = 0;
                     GameOver = true;
@@ -206,14 +213,14 @@ namespace BlazorInvaders.GameObjects
 
         private void UpdateBombs()
         {
-            if ((!_bombs.Any() || _bombs.All(_ => _.Remove)) && _random.Next(0,100) > (85 + (_aliens.Count(_ => _.Destroyed) / 5)))
+            if ((!_bombs.Any() || _bombs.All(_ => _.Remove)) && _random.Next(0, 100) > (85 + (_aliens.Count(_ => _.Destroyed) / 5)))
             {
-                var xColumn = _random.Next(0, 10);
+                var xColumn = _random.Next(0, 11);
                 var alien = _aliens.OrderByDescending(_ => _.CurrentPosition.Y).FirstOrDefault(_ => _.Column == xColumn && !_.Destroyed);
                 var counter = 0;
                 while (alien == null && counter < 60)
                 {
-                    xColumn = _random.Next(0, 10);
+                    xColumn = _random.Next(0, 11);
                     alien = _aliens.OrderByDescending(_ => _.CurrentPosition.Y).FirstOrDefault(_ => _.Column == xColumn && !_.Destroyed);
                     counter++;
                 }
@@ -258,10 +265,10 @@ namespace BlazorInvaders.GameObjects
             length = await _context.MeasureTextAsync(text);
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), 200);
             Started = false;
-            if (_points > _highScore)
+            if (_points > HighScore)
             {
-                _highScore = _points;
-                await _localStorage.SetItemAsync<int>("BlazorInvadersHighScore", _highScore);
+                HighScore = _points;
+                NewHighScore?.Invoke(this, new EventArgs());
             }
         }
 
@@ -286,7 +293,7 @@ namespace BlazorInvaders.GameObjects
             }
             var ship = Player.Sprite;
             await _context.DrawImageAsync(_spriteSheet,
-                ship.TopLeft.X, ship.TopLeft.Y, ship.Size.Width, ship.Size.Height, Player.CurrentPosition.X, Player.CurrentPosition.Y, ship.RenderSize.Width, ship.RenderSize.Height); 
+                ship.TopLeft.X, ship.TopLeft.Y, ship.Size.Width, ship.Size.Height, Player.CurrentPosition.X, Player.CurrentPosition.Y, ship.RenderSize.Width, ship.RenderSize.Height);
             foreach (var s in _shots.Where(_ => !_.Remove))
             {
                 if (s.CurrentPosition.Y <= 0)
@@ -295,7 +302,7 @@ namespace BlazorInvaders.GameObjects
                     continue;
                 }
                 await _context.DrawImageAsync(_spriteSheet,
-                    s.Sprite.TopLeft.X, s.Sprite.TopLeft.Y, s.Sprite.Size.Width, s.Sprite.Size.Height, s.CurrentPosition.X, s.CurrentPosition.Y, s.Sprite.RenderSize.Width, s.Sprite.RenderSize.Height); 
+                    s.Sprite.TopLeft.X, s.Sprite.TopLeft.Y, s.Sprite.Size.Width, s.Sprite.Size.Height, s.CurrentPosition.X, s.CurrentPosition.Y, s.Sprite.RenderSize.Width, s.Sprite.RenderSize.Height);
             }
             foreach (var b in _bombs.Where(_ => !_.Remove))
             {
@@ -322,7 +329,7 @@ namespace BlazorInvaders.GameObjects
                 else
                 {
                     await _context.DrawImageAsync(_spriteSheet,
-                   _motherShip.Sprite.TopLeft.X, _motherShip.Sprite.TopLeft.Y, _motherShip.Sprite.Size.Width, _motherShip.Sprite.Size.Height, _motherShip.CurrentPosition.X, _motherShip.CurrentPosition.Y, _motherShip.Sprite.RenderSize.Width, _motherShip.Sprite.RenderSize.Height); //TODO: Remove hardcoded sizes
+                        _motherShip.Sprite.TopLeft.X, _motherShip.Sprite.TopLeft.Y, _motherShip.Sprite.Size.Width, _motherShip.Sprite.Size.Height, _motherShip.CurrentPosition.X, _motherShip.CurrentPosition.Y, _motherShip.Sprite.RenderSize.Width, _motherShip.Sprite.RenderSize.Height); //TODO: Remove hardcoded sizes
 
                 }
             }

@@ -1,0 +1,45 @@
+@using BlazorInvaders.GameObjects
+
+<div class="simple-form text-center">
+    <div class="row">
+        <div class="col">
+            <label>Enter your initials</label>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <input class="initials" type="text" maxlength="1" @bind="First" />
+        </div>
+        <div class="col">
+            <input class="initials" type="text" maxlength="1" @bind="Second" />
+        </div>
+        <div class="col">
+            <input class="initials" type="text" maxlength="1" @bind="Third" />
+        </div>
+    </div>
+    <br />
+    <div class="row">
+        <div class="col">
+            <button @onclick="SaveHighScore" class="btn btn-primary">Submit</button>
+            <button @onclick="BlazoredModal.Cancel" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; }
+    private HighScore _highScore;
+    private char First { get; set; }
+    private char Second { get; set; }
+    private char Third { get; set; }
+    protected override void OnInitialized() { }
+
+    void SaveHighScore()
+    {
+        _highScore = new HighScore
+        {
+            Name = $"{First}{Second}{Third}"
+        };
+        BlazoredModal.Close(ModalResult.Ok<HighScore>(_highScore));
+    }
+}
