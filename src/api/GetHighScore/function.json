@@ -23,6 +23,15 @@
       "collectionName": "highscores",
       "connectionStringSetting": "bjorndanielcosmos_DOCUMENTDB",
       "id": "CurrentHighScore"
+    },
+    {
+      "type": "cosmosDB",
+      "direction": "out",
+      "name": "saveConnection",
+      "databaseName": "blazorinvaders",
+      "collectionName": "connections",
+      "createIfNotExists": "true",
+      "connectionStringSetting": "bjorndanielcosmos_DOCUMENTDB",
     }
   ]
 }

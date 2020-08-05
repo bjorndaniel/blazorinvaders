@@ -30,10 +30,11 @@ namespace BlazorInvaders.GameObjects
         int _lives;
         Random _random = new Random();
         private bool _lostALife;
-
+        private double _gameSpeed;
         private MotherShip _motherShip;
         private readonly HttpClient _client;
         private readonly string _apiUrl;
+        public Guid HighScoreGuid { get; set; }
         public string HighScoreName { get; set; }
 
         public event Func<object, EventArgs, Task> NewHighScore;
@@ -49,15 +50,20 @@ namespace BlazorInvaders.GameObjects
         public async ValueTask Init(BECanvasComponent canvas, ElementReference spriteSheet)
         {
             _context = await canvas.CreateCanvas2DAsync();
+            _gameSpeed = 0;
             _spriteSheet = spriteSheet;
-            var result = await _client.GetAsync($"{_apiUrl}/gethighscore");
+            HighScoreGuid = Guid.NewGuid();
+            var result = await _client.GetAsync($"{_apiUrl}/gethighscore?id={HighScoreGuid}");
             var highScore = JsonSerializer.Deserialize<HighScore>(await result.Content.ReadAsStringAsync().ConfigureAwait(false));
             HighScore = highScore.Score;
             HighScoreName = highScore.Name;
         }
 
-        public void Start(float time)
+        public async ValueTask Start(float time)
         {
+            _gameSpeed = 0;
+            HighScoreGuid = Guid.NewGuid();
+            await _client.GetAsync($"{_apiUrl}/gethighscore?id={HighScoreGuid}");
             _aliens = new List<Alien>();
             _shots = new List<Shot>();
             _bombs = new List<Bomb>();
@@ -92,7 +98,16 @@ namespace BlazorInvaders.GameObjects
             UpdateShots();
             if (_aliens.All(_ => _.Destroyed))
             {
-                Won = true;
+                _gameSpeed += 0.75;
+                _aliens.Clear();
+                for (int i = 0; i < 11; i++)
+                {
+                    _aliens.Add(new Alien(AlienType.Squid, new Point((i * 60 + 120), 100), i, 0));
+                    _aliens.Add(new Alien(AlienType.Crab, new Point((i * 60 + 120), 145), i, 1));
+                    _aliens.Add(new Alien(AlienType.Crab, new Point((i * 60 + 120), 190), i, 2));
+                    _aliens.Add(new Alien(AlienType.Octopus, new Point((i * 60 + 120), 235), i, 3));
+                    _aliens.Add(new Alien(AlienType.Octopus, new Point((i * 60 + 120), 270), i, 4));
+                }
             }
             if (_motherShip == null && _random.Next(100) > 90)
             {
@@ -112,10 +127,6 @@ namespace BlazorInvaders.GameObjects
             if (GameOver)
             {
                 await RenderGameOver();
-            }
-            else if (Won)
-            {
-                await RenderWonGame();
             }
             else if (Started)
             {
@@ -176,7 +187,7 @@ namespace BlazorInvaders.GameObjects
 
         private void UpdateAliens()
         {
-            if (_gameTime.TotalTime - _lastUpdate > 250)
+            if (_gameTime.TotalTime - _lastUpdate > (250 - 100 * _gameSpeed))
             {
                 _lastUpdate = _gameTime.TotalTime;
 
@@ -195,7 +206,7 @@ namespace BlazorInvaders.GameObjects
                     _aliens.ForEach(_ => _.MoveHorizontal(_currentMovement));
                 }
                 _aliens.Where(_ => _.HasBeenHit).ToList().ForEach(_ => _.Destroyed = true);
-                if (_aliens.Any(_ => !_.Destroyed && _player.Collision(_)) || Aliens.Any(_ => !_.Destroyed && _.CurrentPosition.Y > 500))
+                if (_aliens.Any(_ => !_.Destroyed && _player.Collision(_)) || Aliens.Any(_ => !_.Destroyed && _.CurrentPosition.Y > 450))
                 {
                     _lives = 0;
                     GameOver = true;
@@ -247,18 +258,7 @@ namespace BlazorInvaders.GameObjects
 
         private async Task RenderGameOver()
         {
-            var text = $"Game over, you lost!";
-            var length = await _context.MeasureTextAsync(text);
-            await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), 150);
-            text = $"Press space to start a new game";
-            length = await _context.MeasureTextAsync(text);
-            await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), 200);
-            Started = false;
-        }
-
-        private async Task RenderWonGame()
-        {
-            var text = $"Congratulations you won!";
+            var text = $"Game over!";
             var length = await _context.MeasureTextAsync(text);
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), 150);
             text = $"Press space to start a new game";
@@ -271,7 +271,6 @@ namespace BlazorInvaders.GameObjects
                 NewHighScore?.Invoke(this, new EventArgs());
             }
         }
-
         private async Task RenderGameFrame()
         {
             if (_lostALife)
