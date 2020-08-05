@@ -4,6 +4,7 @@ A Blazor WASM implementation of Space Invaders based on
 * https://github.com/sausheong/invaders 
 
 TODO:
+* Add global higscore **DONE**
 * Better sprites
 * Add shields
 * Refactor code to remove duplication
