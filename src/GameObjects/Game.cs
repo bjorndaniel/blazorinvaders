@@ -54,9 +54,13 @@ namespace BlazorInvaders.GameObjects
             _spriteSheet = spriteSheet;
             HighScoreGuid = Guid.NewGuid();
             var result = await _client.GetAsync($"{_apiUrl}/gethighscore?id={HighScoreGuid}");
-            var highScore = JsonSerializer.Deserialize<HighScore>(await result.Content.ReadAsStringAsync().ConfigureAwait(false));
-            HighScore = highScore.Score;
-            HighScoreName = highScore.Name;
+            var x = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
+            if(!string.IsNullOrEmpty(x))
+            {
+                var highScore = JsonSerializer.Deserialize<HighScore>(x);
+                HighScore = highScore.Score;
+                HighScoreName = highScore.Name;
+            }
         }
 
         public async ValueTask Start(float time)
@@ -271,6 +275,7 @@ namespace BlazorInvaders.GameObjects
                 NewHighScore?.Invoke(this, new EventArgs());
             }
         }
+
         private async Task RenderGameFrame()
         {
             if (_lostALife)
