@@ -53,21 +53,21 @@ namespace BlazorInvaders.GameObjects
             _gameSpeed = 0;
             _spriteSheet = spriteSheet;
             HighScoreGuid = Guid.NewGuid();
-            var result = await _client.GetAsync($"{_apiUrl}/gethighscore?id={HighScoreGuid}");
-            var x = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
-            if(!string.IsNullOrEmpty(x))
-            {
-                var highScore = JsonSerializer.Deserialize<HighScore>(x);
-                HighScore = highScore.Score;
-                HighScoreName = highScore.Name;
-            }
+            // var result = await _client.GetAsync($"{_apiUrl}/gethighscore?id={HighScoreGuid}");
+            // var x = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
+            // if(!string.IsNullOrEmpty(x))
+            // {
+            //     var highScore = JsonSerializer.Deserialize<HighScore>(x);
+            //     HighScore = highScore.Score;
+            //     HighScoreName = highScore.Name;
+            // }
         }
 
         public async ValueTask Start(float time)
         {
             _gameSpeed = 0;
             HighScoreGuid = Guid.NewGuid();
-            await _client.GetAsync($"{_apiUrl}/gethighscore?id={HighScoreGuid}");
+            // await _client.GetAsync($"{_apiUrl}/gethighscore?id={HighScoreGuid}");
             _aliens = new List<Alien>();
             _shots = new List<Shot>();
             _bombs = new List<Bomb>();

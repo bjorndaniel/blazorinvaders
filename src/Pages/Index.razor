@@ -91,7 +91,7 @@
             var score = result.Data as HighScore;
             score.Score = _game.HighScore;
             _game.HighScoreName = score.Name.ToUpper();
-            await Http.PostAsJsonAsync($"{Config["FunctionsApi"]}/SaveHighScore?id={_game.HighScoreGuid}", score);
+            // await Http.PostAsJsonAsync($"{Config["FunctionsApi"]}/SaveHighScore?id={_game.HighScoreGuid}", score);
         }
         _disableKeyboard = false;
     }
