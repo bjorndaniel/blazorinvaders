@@ -1,38 +1,48 @@
 using Azure;
 using Azure.Data.Tables;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
+using System.Net;
 
 namespace BlazorInvaders.Api;
 
 public class GetHighScore
 {
     [Function("gethighscore")]
-    public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
+    public async Task<HttpResponseData> Run(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
         var connectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         if (string.IsNullOrEmpty(connectionString))
-            return new StatusCodeResult(500);
+        {
+            var err = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await err.WriteStringAsync("Storage not configured");
+            return err;
+        }
 
         try
         {
             var client = new TableClient(connectionString, "HighScores");
             var entity = await client.GetEntityAsync<TableEntity>("HighScore", "Current");
-            return new OkObjectResult(new
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteAsJsonAsync(new
             {
                 name = entity.Value["Name"]?.ToString(),
                 score = entity.Value["Score"]
             });
+            return response;
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
         {
-            return new OkObjectResult(null);
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteStringAsync("null");
+            return response;
         }
         catch (Exception ex)
         {
-            return new ObjectResult(ex.Message) { StatusCode = 500 };
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync(ex.Message);
+            return response;
         }
     }
 }

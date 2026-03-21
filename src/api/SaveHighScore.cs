@@ -1,7 +1,8 @@
 using Azure.Data.Tables;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
+using System.Net;
+using System.Text.Json;
 
 namespace BlazorInvaders.Api;
 
@@ -10,13 +11,13 @@ public record HighScoreRequest(string Name, int Score);
 public class SaveHighScore
 {
     [Function("savehighscore")]
-    public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req)
+    public async Task<HttpResponseData> Run(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
     {
         HighScoreRequest? dto;
         try
         {
-            dto = await req.ReadFromJsonAsync<HighScoreRequest>();
+            dto = await JsonSerializer.DeserializeAsync<HighScoreRequest>(req.Body);
         }
         catch
         {
@@ -24,11 +25,19 @@ public class SaveHighScore
         }
 
         if (dto is null || string.IsNullOrEmpty(dto.Name))
-            return new BadRequestObjectResult("Missing name or score");
+        {
+            var bad = req.CreateResponse(HttpStatusCode.BadRequest);
+            await bad.WriteStringAsync("Missing name or score");
+            return bad;
+        }
 
         var connectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         if (string.IsNullOrEmpty(connectionString))
-            return new StatusCodeResult(500);
+        {
+            var err = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await err.WriteStringAsync("Storage not configured");
+            return err;
+        }
 
         try
         {
@@ -43,11 +52,15 @@ public class SaveHighScore
             };
             await tableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace);
 
-            return new OkObjectResult("Saved high score");
+            var response = req.CreateResponse(HttpStatusCode.OK);
+            await response.WriteStringAsync("Saved high score");
+            return response;
         }
         catch (Exception ex)
         {
-            return new ObjectResult(ex.Message) { StatusCode = 500 };
+            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await response.WriteStringAsync(ex.Message);
+            return response;
         }
     }
 }
