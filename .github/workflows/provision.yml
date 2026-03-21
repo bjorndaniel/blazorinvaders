@@ -99,6 +99,7 @@ jobs:
             --resource-group "${{ inputs.resource_group }}" \
             --setting-names \
               "AzureWebJobsStorage=${{ steps.storage.outputs.connection_string }}" \
+              "FUNCTIONS_WORKER_RUNTIME=dotnet-isolated" \
               "FUNCTIONS_API_URL=${{ steps.urls.outputs.api_url }}"
 
       - name: Save secrets to GitHub
