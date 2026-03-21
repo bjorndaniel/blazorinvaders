@@ -1,12 +1,14 @@
 {
-  "name": "",
-  "version": "",
+  "name": "blazorinvaders-api",
+  "version": "1.0.0",
   "description": "",
+  "main": "functions/*.js",
   "scripts": {
     "test": "echo \"No tests yet...\""
   },
   "author": "",
   "dependencies": {
+    "@azure/functions": "^4.6.0",
     "@azure/data-tables": "^13.3.0"
   }
 }
