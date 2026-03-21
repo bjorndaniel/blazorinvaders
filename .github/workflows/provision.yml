@@ -4,25 +4,25 @@ on:
   workflow_dispatch:
     inputs:
       resource_group:
-        description: 'Resource group name'
+        description: "Resource group name"
         required: true
-        default: 'blazorinvaders-rg'
+        default: "blazorinvaders-rg"
       location:
-        description: 'Azure region'
+        description: "Azure region"
         required: true
-        default: 'westeurope'
+        default: "westeurope"
       app_name:
-        description: 'Static Web App name (must be globally unique)'
+        description: "Static Web App name (must be globally unique)"
         required: true
-        default: 'blazorinvaders'
+        default: "blazorinvaders"
       storage_name:
-        description: 'Storage account name (3-24 lowercase alphanumeric chars, globally unique)'
+        description: "Storage account name (3-24 lowercase alphanumeric chars, globally unique)"
         required: true
-        default: 'blazorinvadersstore'
+        default: "blazorinvadersstore"
       custom_domain:
-        description: 'Custom domain, e.g. yourdomain.com (leave blank to skip)'
+        description: "Custom domain, e.g. yourdomain.com (leave blank to skip)"
         required: false
-        default: ''
+        default: ""
 
 jobs:
   provision:
@@ -113,14 +113,6 @@ jobs:
             --body "${{ steps.urls.outputs.api_url }}" \
             --repo "${{ github.repository }}"
 
-      - name: Configure custom domain
-        if: ${{ inputs.custom_domain != '' }}
-        run: |
-          az staticwebapp hostname set \
-            --name "${{ inputs.app_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
-            --hostname "${{ inputs.custom_domain }}"
-
       - name: Summary
         run: |
           HOSTNAME="${{ steps.swa.outputs.hostname }}"
@@ -133,16 +125,21 @@ jobs:
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| **App URL** | https://$HOSTNAME |" >> $GITHUB_STEP_SUMMARY
           echo "| **API URL** | $API_URL |" >> $GITHUB_STEP_SUMMARY
-          if [ -n "$DOMAIN" ]; then
-            echo "| **Custom domain** | https://$DOMAIN _(DNS propagation may take up to 48 h)_ |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### DNS records to add at your registrar" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "CNAME  $DOMAIN       ->  $HOSTNAME" >> $GITHUB_STEP_SUMMARY
-            echo "CNAME  www.$DOMAIN   ->  $HOSTNAME" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "GitHub secrets **\`SWA_DEPLOYMENT_TOKEN\`** and **\`FUNCTIONS_API_URL\`** have been set automatically." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$DOMAIN" ]; then
+            echo "## Custom domain — action required" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Azure requires the CNAME to exist **before** it will accept the domain." >> $GITHUB_STEP_SUMMARY
+            echo "Add these records at your DNS registrar first:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Type | Host | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+            echo "| CNAME | \`$DOMAIN\` | \`$HOSTNAME\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| CNAME | \`www.$DOMAIN\` | \`$HOSTNAME\` |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Then run **Actions → Set Custom Domain** once DNS has propagated." >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Push to \`master\` (or trigger **Deploy** manually) to publish the app." >> $GITHUB_STEP_SUMMARY

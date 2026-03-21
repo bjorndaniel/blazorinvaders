@@ -1,0 +1,71 @@
+name: Set Custom Domain
+
+on:
+  workflow_dispatch:
+    inputs:
+      custom_domain:
+        description: 'Custom domain to register, e.g. blazorinvaders.bjorndaniel.se'
+        required: true
+      app_name:
+        description: 'Static Web App name'
+        required: true
+        default: 'blazorinvaders'
+      resource_group:
+        description: 'Resource group name'
+        required: true
+        default: 'blazorinvaders-rg'
+
+jobs:
+  set_domain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Verify CNAME exists
+        run: |
+          DOMAIN="${{ inputs.custom_domain }}"
+          echo "Checking CNAME for $DOMAIN..."
+          if ! host "$DOMAIN" | grep -q "alias for\|CNAME"; then
+            echo "::warning::No CNAME record found for $DOMAIN. DNS may not have propagated yet."
+            echo "Attempting to register anyway — Azure will reject it if DNS is not ready."
+          else
+            echo "CNAME found for $DOMAIN ✓"
+          fi
+
+      - name: Register custom domain
+        run: |
+          az staticwebapp hostname set \
+            --name "${{ inputs.app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --hostname "${{ inputs.custom_domain }}"
+
+      - name: Update API URL to use custom domain
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          NEW_API_URL="https://${{ inputs.custom_domain }}/api"
+
+          az staticwebapp appsettings set \
+            --name "${{ inputs.app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --setting-names "FUNCTIONS_API_URL=$NEW_API_URL"
+
+          gh secret set FUNCTIONS_API_URL \
+            --body "$NEW_API_URL" \
+            --repo "${{ github.repository }}"
+
+      - name: Summary
+        run: |
+          echo "## Custom domain configured ✓" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Domain** | https://${{ inputs.custom_domain }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **API URL** | https://${{ inputs.custom_domain }}/api |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Azure will provision a free SSL certificate automatically (may take a few minutes)." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Trigger **Deploy** to rebuild the app with the updated API URL." >> $GITHUB_STEP_SUMMARY
