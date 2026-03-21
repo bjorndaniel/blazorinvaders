@@ -1,7 +1,7 @@
 {
   "bindings": [
     {
-      "authLevel": "function",
+      "authLevel": "anonymous",
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
@@ -13,13 +13,6 @@
       "type": "http",
       "direction": "out",
       "name": "res"
-    },
-    {
-      "type": "table",
-      "direction": "out",
-      "name": "highScoreOut",
-      "tableName": "HighScores",
-      "connection": "AzureWebJobsStorage"
     }
   ]
 }
