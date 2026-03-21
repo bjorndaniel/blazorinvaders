@@ -7,6 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="api/**" />
+    <Content Remove="api/**" />
+    <None Remove="api/**" />
+    <EmbeddedResource Remove="api/**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Blazor.Extensions.Canvas" Version="1.1.1" />
     <PackageReference Include="Blazored.Modal" Version="7.3.1" />
     <PackageReference Include="Blazored.Toast" Version="4.2.1" />
