@@ -15,22 +15,11 @@
       "name": "res"
     },
     {
-      "type": "cosmosDB",
+      "type": "table",
       "direction": "out",
-      "name": "saveHighScore",
-      "databaseName": "blazorinvaders",
-      "collectionName": "highscores",
-      "createIfNotExists": "true",
-      "connectionStringSetting": "bjorndanielcosmos_DOCUMENTDB"
-    },
-    {
-      "type": "cosmosDB",
-      "name": "connection",
-      "databaseName": "blazorinvaders",
-      "collectionName": "connections",
-      "connectionStringSetting": "bjorndanielcosmos_DOCUMENTDB",
-      "direction": "in",
-      "Id": "{Query.id}"
+      "name": "highScoreOut",
+      "tableName": "HighScores",
+      "connection": "AzureWebJobsStorage"
     }
   ]
 }

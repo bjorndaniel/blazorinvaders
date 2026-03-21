@@ -196,19 +196,24 @@ body {
     background: #000;
 }
 
-.blazored-modal-title {
+.bm-title {
     color: #000;
     text-shadow: none;
 }
 
-.blazored-modal-content label {
+.blazored-modal {
+    color: #000;
+    text-shadow: none;
+}
+
+.bm-content label {
     color: #000;
     text-shadow: none;
     font-size: large;
     font-weight: bold;
 }
 
-.blazored-modal-content .initials {
+.bm-content .initials {
     color: #000;
     text-shadow: none;
     border-top: none;

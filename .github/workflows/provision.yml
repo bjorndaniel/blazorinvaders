@@ -1,0 +1,148 @@
+name: Provision Azure Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: 'Resource group name'
+        required: true
+        default: 'blazorinvaders-rg'
+      location:
+        description: 'Azure region'
+        required: true
+        default: 'westeurope'
+      app_name:
+        description: 'Static Web App name (must be globally unique)'
+        required: true
+        default: 'blazorinvaders'
+      storage_name:
+        description: 'Storage account name (3-24 lowercase alphanumeric chars, globally unique)'
+        required: true
+        default: 'blazorinvadersstore'
+      custom_domain:
+        description: 'Custom domain, e.g. yourdomain.com (leave blank to skip)'
+        required: false
+        default: ''
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create resource group
+        run: |
+          az group create \
+            --name "${{ inputs.resource_group }}" \
+            --location "${{ inputs.location }}"
+
+      - name: Create storage account
+        run: |
+          az storage account create \
+            --name "${{ inputs.storage_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --location "${{ inputs.location }}" \
+            --sku Standard_LRS \
+            --min-tls-version TLS1_2
+
+      - name: Get storage connection string
+        id: storage
+        run: |
+          CONN_STR=$(az storage account show-connection-string \
+            --name "${{ inputs.storage_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --query connectionString -o tsv)
+          echo "::add-mask::$CONN_STR"
+          echo "connection_string=$CONN_STR" >> $GITHUB_OUTPUT
+
+      - name: Create Static Web App
+        run: |
+          az staticwebapp create \
+            --name "${{ inputs.app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --location "${{ inputs.location }}" \
+            --sku Free
+
+      - name: Get SWA deployment token and hostname
+        id: swa
+        run: |
+          TOKEN=$(az staticwebapp secrets list \
+            --name "${{ inputs.app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --query "properties.apiKey" -o tsv)
+          echo "::add-mask::$TOKEN"
+          echo "deployment_token=$TOKEN" >> $GITHUB_OUTPUT
+
+          HOSTNAME=$(az staticwebapp show \
+            --name "${{ inputs.app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --query defaultHostname -o tsv)
+          echo "hostname=$HOSTNAME" >> $GITHUB_OUTPUT
+
+      - name: Resolve API URL
+        id: urls
+        run: |
+          HOSTNAME="${{ steps.swa.outputs.hostname }}"
+          DOMAIN="${{ inputs.custom_domain }}"
+          API_URL="https://${DOMAIN:-$HOSTNAME}/api"
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+
+      - name: Configure Azure app settings
+        run: |
+          az staticwebapp appsettings set \
+            --name "${{ inputs.app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --setting-names \
+              "AzureWebJobsStorage=${{ steps.storage.outputs.connection_string }}" \
+              "FUNCTIONS_API_URL=${{ steps.urls.outputs.api_url }}"
+
+      - name: Save secrets to GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh secret set SWA_DEPLOYMENT_TOKEN \
+            --body "${{ steps.swa.outputs.deployment_token }}" \
+            --repo "${{ github.repository }}"
+
+          gh secret set FUNCTIONS_API_URL \
+            --body "${{ steps.urls.outputs.api_url }}" \
+            --repo "${{ github.repository }}"
+
+      - name: Configure custom domain
+        if: ${{ inputs.custom_domain != '' }}
+        run: |
+          az staticwebapp hostname set \
+            --name "${{ inputs.app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --hostname "${{ inputs.custom_domain }}"
+
+      - name: Summary
+        run: |
+          HOSTNAME="${{ steps.swa.outputs.hostname }}"
+          DOMAIN="${{ inputs.custom_domain }}"
+          API_URL="${{ steps.urls.outputs.api_url }}"
+
+          echo "## Provisioning complete 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **App URL** | https://$HOSTNAME |" >> $GITHUB_STEP_SUMMARY
+          echo "| **API URL** | $API_URL |" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$DOMAIN" ]; then
+            echo "| **Custom domain** | https://$DOMAIN _(DNS propagation may take up to 48 h)_ |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### DNS records to add at your registrar" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "CNAME  $DOMAIN       ->  $HOSTNAME" >> $GITHUB_STEP_SUMMARY
+            echo "CNAME  www.$DOMAIN   ->  $HOSTNAME" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "GitHub secrets **\`SWA_DEPLOYMENT_TOKEN\`** and **\`FUNCTIONS_API_URL\`** have been set automatically." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Push to \`master\` (or trigger **Deploy** manually) to publish the app." >> $GITHUB_STEP_SUMMARY

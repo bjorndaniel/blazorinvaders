@@ -6,8 +6,7 @@
       "direction": "in",
       "name": "req",
       "methods": [
-        "get",
-        "post"
+        "get"
       ]
     },
     {
@@ -16,22 +15,13 @@
       "name": "res"
     },
     {
-      "type": "cosmosDB",
+      "type": "table",
       "direction": "in",
-      "name": "savedHighScore",
-      "databaseName": "blazorinvaders",
-      "collectionName": "highscores",
-      "connectionStringSetting": "bjorndanielcosmos_DOCUMENTDB",
-      "id": "CurrentHighScore"
-    },
-    {
-      "type": "cosmosDB",
-      "direction": "out",
-      "name": "saveConnection",
-      "databaseName": "blazorinvaders",
-      "collectionName": "connections",
-      "createIfNotExists": "true",
-      "connectionStringSetting": "bjorndanielcosmos_DOCUMENTDB",
+      "name": "highScoreEntity",
+      "tableName": "HighScores",
+      "partitionKey": "HighScore",
+      "rowKey": "Current",
+      "connection": "AzureWebJobsStorage"
     }
   ]
 }

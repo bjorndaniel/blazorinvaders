@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @using Blazor.Extensions
 @using Blazor.Extensions.Canvas.Canvas2D
 @using BlazorInvaders.GameObjects
@@ -22,9 +22,9 @@
 
 <img @ref="_spriteSheet" hidden src="assets/sprites_cleaned.png" />
 @code{
-    BECanvasComponent _canvas;
+    BECanvasComponent _canvas = default!;
     ElementReference _spriteSheet;
-    Game _game;
+    Game _game = default!;
     bool _disableKeyboard = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -49,9 +49,9 @@
     }
 
     [JSInvokable]
-    public void StartGame(float timeStamp)
+    public async ValueTask StartGame(float timeStamp)
     {
-        _game.Start(timeStamp);
+        await _game.Start(timeStamp);
     }
 
     protected async ValueTask KeyDown(KeyboardEventArgs e)
@@ -89,9 +89,9 @@
         if (!result.Cancelled)
         {
             var score = result.Data as HighScore;
-            score.Score = _game.HighScore;
+            score!.Score = _game.HighScore;
             _game.HighScoreName = score.Name.ToUpper();
-            // await Http.PostAsJsonAsync($"{Config["FunctionsApi"]}/SaveHighScore?id={_game.HighScoreGuid}", score);
+            await Http.PostAsJsonAsync($"{Config["FunctionsApi"]}/savehighscore", score);
         }
         _disableKeyboard = false;
     }
