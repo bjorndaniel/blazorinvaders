@@ -109,7 +109,7 @@ jobs:
             --query defaultHostname -o tsv)
           echo "hostname=$HOSTNAME" >> $GITHUB_OUTPUT
 
-      - name: Get Function App hostname and publish profile
+      - name: Get Function App hostname
         id: func
         run: |
           FUNC_HOSTNAME=$(az functionapp show \
@@ -117,13 +117,6 @@ jobs:
             --resource-group "${{ inputs.resource_group }}" \
             --query defaultHostName -o tsv)
           echo "hostname=$FUNC_HOSTNAME" >> $GITHUB_OUTPUT
-
-          PROFILE=$(az functionapp deployment list-publishing-profiles \
-            --name "${{ inputs.function_app_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
-            --xml)
-          echo "::add-mask::$PROFILE"
-          echo "publish_profile=$PROFILE" >> $GITHUB_OUTPUT
 
       - name: Resolve API URL
         id: urls
@@ -145,7 +138,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           SWA_TOKEN: ${{ steps.swa.outputs.deployment_token }}
-          PUBLISH_PROFILE: ${{ steps.func.outputs.publish_profile }}
         run: |
           printf '%s' "$SWA_TOKEN" | gh secret set SWA_DEPLOYMENT_TOKEN \
             --repo "${{ github.repository }}"
@@ -156,8 +148,6 @@ jobs:
           printf '%s' "${{ inputs.function_app_name }}" | gh secret set AZURE_FUNCTION_APP_NAME \
             --repo "${{ github.repository }}"
 
-          printf '%s' "$PUBLISH_PROFILE" | gh secret set AZURE_FUNCTION_PUBLISH_PROFILE \
-            --repo "${{ github.repository }}"
 
       - name: Summary
         run: |
