@@ -31,6 +31,13 @@ jobs:
             -o release \
             --nologo
 
+      - name: Publish Azure Functions
+        run: |
+          dotnet publish src/api/BlazorInvaders.Api.csproj \
+            -c Release \
+            -o api-release \
+            --nologo
+
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -38,5 +45,12 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
           app_location: release/wwwroot
-          api_location: src/api
           skip_app_build: true
+          api_location: ""
+
+      - name: Deploy Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
+          package: api-release
+          publish-profile: ${{ secrets.AZURE_FUNCTION_PUBLISH_PROFILE }}

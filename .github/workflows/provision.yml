@@ -19,6 +19,10 @@ on:
         description: "Storage account name (3-24 lowercase alphanumeric chars, globally unique)"
         required: true
         default: "blazorinvadersstore"
+      function_app_name:
+        description: "Function App name (must be globally unique)"
+        required: true
+        default: "blazorinvaders-api"
       custom_domain:
         description: "Custom domain, e.g. yourdomain.com (leave blank to skip)"
         required: false
@@ -68,6 +72,27 @@ jobs:
             --location "${{ inputs.location }}" \
             --sku Free
 
+      - name: Create Function App (consumption plan)
+        run: |
+          az functionapp create \
+            --name "${{ inputs.function_app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --storage-account "${{ inputs.storage_name }}" \
+            --consumption-plan-location "${{ inputs.location }}" \
+            --runtime dotnet-isolated \
+            --runtime-version 9 \
+            --functions-version 4 \
+            --os-type Windows
+
+      - name: Configure Function App settings
+        run: |
+          az functionapp config appsettings set \
+            --name "${{ inputs.function_app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --settings \
+              "AzureWebJobsStorage=${{ steps.storage.outputs.connection_string }}" \
+              "FUNCTIONS_WORKER_RUNTIME=dotnet-isolated"
+
       - name: Get SWA deployment token and hostname
         id: swa
         run: |
@@ -84,23 +109,37 @@ jobs:
             --query defaultHostname -o tsv)
           echo "hostname=$HOSTNAME" >> $GITHUB_OUTPUT
 
+      - name: Get Function App hostname and publish profile
+        id: func
+        run: |
+          FUNC_HOSTNAME=$(az functionapp show \
+            --name "${{ inputs.function_app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --query defaultHostName -o tsv)
+          echo "hostname=$FUNC_HOSTNAME" >> $GITHUB_OUTPUT
+
+          PROFILE=$(az functionapp deployment list-publishing-profiles \
+            --name "${{ inputs.function_app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --xml)
+          echo "::add-mask::$PROFILE"
+          echo "publish_profile=$PROFILE" >> $GITHUB_OUTPUT
+
       - name: Resolve API URL
         id: urls
         run: |
-          HOSTNAME="${{ steps.swa.outputs.hostname }}"
+          FUNC_HOSTNAME="${{ steps.func.outputs.hostname }}"
           DOMAIN="${{ inputs.custom_domain }}"
-          API_URL="https://${DOMAIN:-$HOSTNAME}/api"
+          API_URL="https://$FUNC_HOSTNAME/api"
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
 
-      - name: Configure Azure app settings
+      - name: Configure CORS on Function App
         run: |
-          az staticwebapp appsettings set \
-            --name "${{ inputs.app_name }}" \
+          SWA_HOSTNAME="${{ steps.swa.outputs.hostname }}"
+          az functionapp cors add \
+            --name "${{ inputs.function_app_name }}" \
             --resource-group "${{ inputs.resource_group }}" \
-            --setting-names \
-              "AzureWebJobsStorage=${{ steps.storage.outputs.connection_string }}" \
-              "FUNCTIONS_WORKER_RUNTIME=dotnet-isolated" \
-              "FUNCTIONS_API_URL=${{ steps.urls.outputs.api_url }}"
+            --allowed-origins "https://$SWA_HOSTNAME"
 
       - name: Save secrets to GitHub
         env:
@@ -114,33 +153,38 @@ jobs:
             --body "${{ steps.urls.outputs.api_url }}" \
             --repo "${{ github.repository }}"
 
+          gh secret set AZURE_FUNCTION_APP_NAME \
+            --body "${{ inputs.function_app_name }}" \
+            --repo "${{ github.repository }}"
+
+          gh secret set AZURE_FUNCTION_PUBLISH_PROFILE \
+            --body "${{ steps.func.outputs.publish_profile }}" \
+            --repo "${{ github.repository }}"
+
       - name: Summary
         run: |
           HOSTNAME="${{ steps.swa.outputs.hostname }}"
-          DOMAIN="${{ inputs.custom_domain }}"
+          FUNC_HOSTNAME="${{ steps.func.outputs.hostname }}"
           API_URL="${{ steps.urls.outputs.api_url }}"
+          DOMAIN="${{ inputs.custom_domain }}"
 
-          echo "## Provisioning complete 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "## Provisioning complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| | |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| **App URL** | https://$HOSTNAME |" >> $GITHUB_STEP_SUMMARY
           echo "| **API URL** | $API_URL |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "GitHub secrets **\`SWA_DEPLOYMENT_TOKEN\`** and **\`FUNCTIONS_API_URL\`** have been set automatically." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "GitHub secrets have been set automatically." >> $GITHUB_STEP_SUMMARY
           if [ -n "$DOMAIN" ]; then
-            echo "## Custom domain — action required" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Azure requires the CNAME to exist **before** it will accept the domain." >> $GITHUB_STEP_SUMMARY
-            echo "Add these records at your DNS registrar first:" >> $GITHUB_STEP_SUMMARY
+            echo "## Custom domain — action required" >> $GITHUB_STEP_SUMMARY
+            echo "Add these DNS records first, then run **Set Custom Domain**:" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "| Type | Host | Value |" >> $GITHUB_STEP_SUMMARY
             echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
             echo "| CNAME | \`$DOMAIN\` | \`$HOSTNAME\` |" >> $GITHUB_STEP_SUMMARY
             echo "| CNAME | \`www.$DOMAIN\` | \`$HOSTNAME\` |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Then run **Actions → Set Custom Domain** once DNS has propagated." >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Push to \`master\` (or trigger **Deploy** manually) to publish the app." >> $GITHUB_STEP_SUMMARY
