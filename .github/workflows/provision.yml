@@ -144,21 +144,19 @@ jobs:
       - name: Save secrets to GitHub
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
+          SWA_TOKEN: ${{ steps.swa.outputs.deployment_token }}
+          PUBLISH_PROFILE: ${{ steps.func.outputs.publish_profile }}
         run: |
-          gh secret set SWA_DEPLOYMENT_TOKEN \
-            --body "${{ steps.swa.outputs.deployment_token }}" \
+          printf '%s' "$SWA_TOKEN" | gh secret set SWA_DEPLOYMENT_TOKEN \
             --repo "${{ github.repository }}"
 
-          gh secret set FUNCTIONS_API_URL \
-            --body "${{ steps.urls.outputs.api_url }}" \
+          printf '%s' "${{ steps.urls.outputs.api_url }}" | gh secret set FUNCTIONS_API_URL \
             --repo "${{ github.repository }}"
 
-          gh secret set AZURE_FUNCTION_APP_NAME \
-            --body "${{ inputs.function_app_name }}" \
+          printf '%s' "${{ inputs.function_app_name }}" | gh secret set AZURE_FUNCTION_APP_NAME \
             --repo "${{ github.repository }}"
 
-          gh secret set AZURE_FUNCTION_PUBLISH_PROFILE \
-            --body "${{ steps.func.outputs.publish_profile }}" \
+          printf '%s' "$PUBLISH_PROFILE" | gh secret set AZURE_FUNCTION_PUBLISH_PROFILE \
             --repo "${{ github.repository }}"
 
       - name: Summary
