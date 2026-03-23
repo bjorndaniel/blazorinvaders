@@ -115,7 +115,7 @@ namespace BlazorInvaders.GameObjects
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (scores?.Count > 0)
                     {
-                        _topScores = scores.Take(3).ToList();
+                        _topScores = scores.Take(10).ToList();
                         HighScore = scores[0].Score;
                         HighScoreName = scores[0].Name;
                     }
@@ -176,6 +176,9 @@ namespace BlazorInvaders.GameObjects
 
         private int GetMotherShipScore() =>
             MotherShipScoreTable[_totalShotsFired % MotherShipScoreTable.Length];
+
+        private bool QualifiesForLeaderboard() =>
+            _topScores.Count < 10 || _points > _topScores[^1].Score;
 
         private int GetAlienPoints(int row) => row switch
         {
@@ -588,7 +591,7 @@ namespace BlazorInvaders.GameObjects
             else
             {
                 var y = 180;
-                for (int i = 0; i < _topScores.Count; i++)
+                for (int i = 0; i < Math.Min(_topScores.Count, 3); i++)
                 {
                     var line = $"{i + 1}.  {_topScores[i].Name,-5} {_topScores[i].Score:D5}";
                     var ll = await _context.MeasureTextAsync(line);
@@ -621,10 +624,11 @@ namespace BlazorInvaders.GameObjects
             if (_context == null) return;
             Started = false;
 
-            if (_points > HighScore && !_newHighScoreFired)
+            if (!_newHighScoreFired && QualifiesForLeaderboard())
             {
                 _newHighScoreFired = true;
-                HighScore = _points;
+                if (_points > HighScore)
+                    HighScore = _points;
                 NewHighScore?.Invoke(this, EventArgs.Empty);
             }
 
