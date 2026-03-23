@@ -107,6 +107,35 @@ public class BombTests
 
         Assert.False(bomb.Remove);
     }
+
+    [Fact]
+    public void Straight_Move_XIsUnchanged()
+    {
+        var bomb = new Bomb(new Point(100, 200), BombType.Straight);
+        bomb.Move();
+
+        Assert.Equal(100, bomb.CurrentPosition.X);
+    }
+
+    [Fact]
+    public void Zigzag_Move_ChangesX()
+    {
+        var bomb = new Bomb(new Point(100, 200), BombType.Zigzag);
+        bomb.Move();
+
+        // After first move phase=0.4, sin(0.4)*8 ≈ 3 — X will not stay at 100
+        Assert.NotEqual(100, bomb.CurrentPosition.X);
+    }
+
+    [Fact]
+    public void Rolling_Move_ChangesX()
+    {
+        var bomb = new Bomb(new Point(100, 200), BombType.Rolling);
+        bomb.Move();
+
+        // After first move phase=0.4, cos(0.28)*5 ≈ 4 — X will not stay at 100
+        Assert.NotEqual(100, bomb.CurrentPosition.X);
+    }
 }
 
 public class PlayerTests
@@ -355,6 +384,23 @@ public class AlienTests
     }
 
     [Fact]
+    public void HitTime_DefaultIsNegativeOne()
+    {
+        var alien = new Alien(AlienType.Crab, new Point(100, 100), 0, 0);
+
+        Assert.Equal(-1f, alien.HitTime);
+    }
+
+    [Fact]
+    public void HitTime_CanBeSet()
+    {
+        var alien = new Alien(AlienType.Crab, new Point(100, 100), 0, 0);
+        alien.HitTime = 1234.5f;
+
+        Assert.Equal(1234.5f, alien.HitTime);
+    }
+
+    [Fact]
     public void MoveHorizontal_TogglesSpriteBetweenStillAndMoving()
     {
         var alien = new Alien(AlienType.Crab, new Point(100, 100), 0, 0);
@@ -445,6 +491,154 @@ public class MotherShipTests
         var ship = new MotherShip(new Point(100, 80));
 
         Assert.False(ship.Destroyed);
+    }
+
+    [Fact]
+    public void Score_DefaultIsZero()
+    {
+        var ship = new MotherShip(new Point(100, 80));
+
+        Assert.Equal(0, ship.Score);
+    }
+
+    [Fact]
+    public void Score_CanBeSetExternally()
+    {
+        var ship = new MotherShip(new Point(100, 80));
+        ship.Score = 150;
+
+        Assert.Equal(150, ship.Score);
+    }
+
+    [Fact]
+    public void Collision_WithShot_DoesNotSetScore()
+    {
+        var ship = new MotherShip(new Point(100, 80));
+        ship.Score = 0;
+        var shot = new Shot(ship.CurrentPosition);
+        ship.Collision(shot);
+
+        Assert.Equal(0, ship.Score);
+    }
+}
+
+public class BunkerTests
+{
+    [Fact]
+    public void Constructor_SetsPosition()
+    {
+        var pos = new Point(100, 400);
+        var bunker = new Bunker(pos);
+
+        Assert.Equal(pos, bunker.Position);
+    }
+
+    [Fact]
+    public void Health_DefaultIsFour()
+    {
+        var bunker = new Bunker(new Point(0, 0));
+
+        Assert.Equal(4, bunker.Health);
+    }
+
+    [Fact]
+    public void Destroyed_DefaultIsFalse()
+    {
+        var bunker = new Bunker(new Point(0, 0));
+
+        Assert.False(bunker.Destroyed);
+    }
+
+    [Fact]
+    public void Hit_DecrementsHealth()
+    {
+        var bunker = new Bunker(new Point(0, 0));
+        bunker.Hit();
+
+        Assert.Equal(3, bunker.Health);
+    }
+
+    [Fact]
+    public void Hit_FourTimes_SetsDestroyedTrue()
+    {
+        var bunker = new Bunker(new Point(0, 0));
+        bunker.Hit();
+        bunker.Hit();
+        bunker.Hit();
+        bunker.Hit();
+
+        Assert.True(bunker.Destroyed);
+    }
+
+    [Fact]
+    public void Hit_BeyondZero_HealthFloorIsZero()
+    {
+        var bunker = new Bunker(new Point(0, 0));
+        for (int i = 0; i < 10; i++)
+            bunker.Hit();
+
+        Assert.Equal(0, bunker.Health);
+    }
+
+    [Fact]
+    public void Size_IsExpected()
+    {
+        Assert.Equal(new Size(60, 32), Bunker.Size);
+    }
+}
+
+public class PowerUpTests
+{
+    [Fact]
+    public void Constructor_SetsPosition()
+    {
+        var pos = new Point(200, 100);
+        var powerUp = new PowerUp(pos);
+
+        Assert.Equal(pos, powerUp.Position);
+    }
+
+    [Fact]
+    public void Collected_DefaultIsFalse()
+    {
+        var powerUp = new PowerUp(new Point(0, 0));
+
+        Assert.False(powerUp.Collected);
+    }
+
+    [Fact]
+    public void Move_IncreasesYBy2()
+    {
+        var powerUp = new PowerUp(new Point(100, 50));
+        powerUp.Move();
+
+        Assert.Equal(52, powerUp.Position.Y);
+    }
+
+    [Fact]
+    public void Move_DoesNotChangeX()
+    {
+        var powerUp = new PowerUp(new Point(100, 50));
+        powerUp.Move();
+
+        Assert.Equal(100, powerUp.Position.X);
+    }
+
+    [Fact]
+    public void Move_MultipleTimes_AccumulatesY()
+    {
+        var powerUp = new PowerUp(new Point(100, 50));
+        powerUp.Move();
+        powerUp.Move();
+        powerUp.Move();
+
+        Assert.Equal(56, powerUp.Position.Y);
+    }
+
+    [Fact]
+    public void Size_IsExpected()
+    {
+        Assert.Equal(new Size(16, 16), PowerUp.Size);
     }
 }
 

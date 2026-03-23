@@ -24,6 +24,8 @@
     <!-- Reference only the game logic source files to avoid WASM build complications -->
     <Compile Include="..\..\src\GameObjects\Alien.cs" />
     <Compile Include="..\..\src\GameObjects\Bomb.cs" />
+    <Compile Include="..\..\src\GameObjects\Bunker.cs" />
+    <Compile Include="..\..\src\GameObjects\PowerUp.cs" />
     <Compile Include="..\..\src\GameObjects\Enumerations.cs" />
     <Compile Include="..\..\src\GameObjects\GameTime.cs" />
     <Compile Include="..\..\src\GameObjects\HighScore.cs" />

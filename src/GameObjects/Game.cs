@@ -65,14 +65,14 @@ namespace BlazorInvaders.GameObjects
         private static readonly int[] MotherShipScoreTable =
             { 100, 50, 50, 100, 150, 100, 100, 50, 300, 100, 100, 100, 50, 150, 100 };
 
-        // Row colours (filter strings)
-        private static readonly string[] RowFilters =
+        // Row tint colours (rgba backgrounds drawn behind each alien)
+        private static readonly string[] RowTints =
         {
-            "none",                                              // row 0 – Squid (white)
-            "sepia(1) saturate(8) hue-rotate(155deg)",          // row 1 – Crab  (cyan)
-            "sepia(1) saturate(8) hue-rotate(155deg)",          // row 2 – Crab  (cyan)
-            "sepia(1) saturate(6) hue-rotate(75deg)",           // row 3 – Octopus (yellow-green)
-            "sepia(1) saturate(6) hue-rotate(75deg)",           // row 4 – Octopus (yellow-green)
+            "rgba(255,255,255,0.18)",   // row 0 – Squid      (white)
+            "rgba(0,220,255,0.22)",     // row 1 – Crab       (cyan)
+            "rgba(0,220,255,0.22)",     // row 2 – Crab       (cyan)
+            "rgba(120,255,60,0.22)",    // row 3 – Octopus    (green)
+            "rgba(120,255,60,0.22)",    // row 4 – Octopus    (green)
         };
 
         public event Func<object, EventArgs, Task>? NewHighScore;
@@ -516,20 +516,22 @@ namespace BlazorInvaders.GameObjects
 
             var rows = new[]
             {
-                (sprite: new Sprite(12, 73, 24, 80), label: "= ???  PTS", filter: "none"),
-                (sprite: new Sprite(0, 27, 20, 41),  label: "= 30  PTS", filter: RowFilters[0]),
-                (sprite: new Sprite(0, 0, 20, 12),   label: "= 20  PTS", filter: RowFilters[1]),
-                (sprite: new Sprite(20, 14, 40, 26),  label: "= 10  PTS", filter: RowFilters[3]),
+                (sprite: new Sprite(12, 73, 24, 80), label: "= ???  PTS", tint: "rgba(255,0,0,0.22)"),
+                (sprite: new Sprite(0, 27, 20, 41),  label: "= 30  PTS", tint: RowTints[0]),
+                (sprite: new Sprite(0, 0, 20, 12),   label: "= 20  PTS", tint: RowTints[1]),
+                (sprite: new Sprite(20, 14, 40, 26),  label: "= 10  PTS", tint: RowTints[3]),
             };
 
             var y = 170;
-            foreach (var (sprite, label, filter) in rows)
+            foreach (var (sprite, label, tint) in rows)
             {
-                await _context.SetFilterAsync(filter);
+                var sx = _width / 2 - 80;
+                var sy = y - sprite.RenderSize.Height;
+                await _context.SetFillStyleAsync(tint);
+                await _context.FillRectAsync(sx, sy, sprite.RenderSize.Width, sprite.RenderSize.Height);
                 await _context.DrawImageAsync(_spriteSheet,
                     sprite.TopLeft.X, sprite.TopLeft.Y, sprite.Size.Width, sprite.Size.Height,
-                    _width / 2 - 80, y - sprite.RenderSize.Height, sprite.RenderSize.Width, sprite.RenderSize.Height);
-                await _context.SetFilterAsync("none");
+                    sx, sy, sprite.RenderSize.Width, sprite.RenderSize.Height);
                 await _context.SetFillStyleAsync("white");
                 await _context.SetFontAsync("20px consolas");
                 await _context.FillTextAsync(label, _width / 2 - 40, y);
@@ -636,12 +638,13 @@ namespace BlazorInvaders.GameObjects
 
             foreach (var a in Aliens.Where(a => !a.Destroyed))
             {
-                var filter = a.Row < RowFilters.Length ? RowFilters[a.Row] : "none";
-                await _context.SetFilterAsync(filter);
+                var tint = a.Row < RowTints.Length ? RowTints[a.Row] : "rgba(255,255,255,0.18)";
+                await _context.SetFillStyleAsync(tint);
+                await _context.FillRectAsync(a.CurrentPosition.X, a.CurrentPosition.Y,
+                    a.Sprite.RenderSize.Width, a.Sprite.RenderSize.Height);
                 await _context.DrawImageAsync(_spriteSheet,
                     a.Sprite.TopLeft.X, a.Sprite.TopLeft.Y, a.Sprite.Size.Width, a.Sprite.Size.Height,
                     a.CurrentPosition.X, a.CurrentPosition.Y, a.Sprite.RenderSize.Width, a.Sprite.RenderSize.Height);
-                await _context.SetFilterAsync("none");
             }
 
             if (_player != null)
