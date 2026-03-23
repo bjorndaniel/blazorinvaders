@@ -17,7 +17,7 @@ public class SaveHighScore
         HighScoreRequest? dto;
         try
         {
-            dto = await JsonSerializer.DeserializeAsync<HighScoreRequest>(req.Body);
+            dto = await JsonSerializer.DeserializeAsync<HighScoreRequest>(req.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
         catch
         {
