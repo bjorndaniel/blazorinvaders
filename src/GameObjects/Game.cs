@@ -49,14 +49,17 @@ namespace BlazorInvaders.GameObjects
             _spriteSheet = spriteSheet;
             HighScoreGuid = Guid.NewGuid();
             var result = await _client.GetAsync($"{_apiUrl}/gethighscore");
-            var x = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(x))
+            if (result.IsSuccessStatusCode)
             {
-                var highScore = JsonSerializer.Deserialize<HighScore>(x);
-                if (highScore != null)
+                var x = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(x) && x != "null")
                 {
-                    HighScore = highScore.Score;
-                    HighScoreName = highScore.Name;
+                    var highScore = JsonSerializer.Deserialize<HighScore>(x);
+                    if (highScore != null)
+                    {
+                        HighScore = highScore.Score;
+                        HighScoreName = highScore.Name;
+                    }
                 }
             }
         }
