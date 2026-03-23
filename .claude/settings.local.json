@@ -6,7 +6,9 @@
       "Bash(cd \"C:/Projects/bjorndaniel/blazorinvaders\" && dotnet build src/BlazorInvaders.sln --nologo 2>&1)",
       "Bash(cd \"C:/Projects/bjorndaniel/blazorinvaders\" && dotnet build src/BlazorInvaders.sln --nologo -v q 2>&1)",
       "Bash(git remote:*)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(cd C:/Projects/bjorndaniel/blazorinvaders && dotnet build src/BlazorInvaders.csproj 2>&1 | tail -20)",
+      "Bash(cd C:/Projects/bjorndaniel/blazorinvaders && dotnet build src/BlazorInvaders.csproj 2>&1 | tail -8)"
     ]
   }
 }

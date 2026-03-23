@@ -14,6 +14,7 @@
     <link href="css/loader.css"
         rel="stylesheet" />
     <link href="BlazorInvaders.styles.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
 </head>
 
 <body>
@@ -71,6 +72,9 @@
             window.requestAnimationFrame(gameLoop);
             canvasContainer.focus();
         };
+
+        // Ensure Orbitron is loaded before the first canvas text draw
+        document.fonts.load('16px Orbitron');
 
         window.startGame = () => {
             window.requestAnimationFrame((t) => {

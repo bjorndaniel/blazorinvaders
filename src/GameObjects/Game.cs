@@ -65,14 +65,14 @@ namespace BlazorInvaders.GameObjects
         private static readonly int[] MotherShipScoreTable =
             { 100, 50, 50, 100, 150, 100, 100, 50, 300, 100, 100, 100, 50, 150, 100 };
 
-        // Row tint colours (rgba backgrounds drawn behind each alien)
+        // Row tint colours applied via source-atop compositing in JS
         private static readonly string[] RowTints =
         {
-            "rgba(255,255,255,0.18)",   // row 0 – Squid      (white)
-            "rgba(0,220,255,0.22)",     // row 1 – Crab       (cyan)
-            "rgba(0,220,255,0.22)",     // row 2 – Crab       (cyan)
-            "rgba(120,255,60,0.22)",    // row 3 – Octopus    (green)
-            "rgba(120,255,60,0.22)",    // row 4 – Octopus    (green)
+            "#ffffff",   // row 0 – Squid    (white)
+            "#00dcff",   // row 1 – Crab     (cyan)
+            "#00dcff",   // row 2 – Crab     (cyan)
+            "#78ff3c",   // row 3 – Octopus  (green)
+            "#78ff3c",   // row 4 – Octopus  (green)
         };
 
         public event Func<object, EventArgs, Task>? NewHighScore;
@@ -232,7 +232,7 @@ namespace BlazorInvaders.GameObjects
             await RenderStars();
 
             await _context.SetFillStyleAsync("white");
-            await _context.SetFontAsync("18px consolas");
+            await _context.SetFontAsync("18px Orbitron");
             var header = $"Score: {_points:D5}   Hi: {HighScore} {HighScoreName}";
             if (_doubleShot) header += "  * 2x SHOT";
             await _context.FillTextAsync(header, 10, 22);
@@ -243,6 +243,15 @@ namespace BlazorInvaders.GameObjects
                 await RenderGameFrame(timeStamp);
             else
                 await RenderAttractScreen(timeStamp);
+
+            await _context.EndBatchAsync();
+
+            // Draw tinted aliens via JS (source-atop compositing) after the first batch
+            // so they sit above the background/bunkers/player but below the overlays.
+            if (Started && !GameOver)
+                await RenderTintedAliens();
+
+            await _context.BeginBatchAsync();
 
             if (Started && !GameOver && _gameTime.TotalTime <= _waveDisplayUntil)
                 await RenderWaveIndicator();
@@ -255,6 +264,27 @@ namespace BlazorInvaders.GameObjects
 
             await _context.EndBatchAsync();
             await ProcessAudio();
+        }
+
+        private async Task RenderTintedAliens()
+        {
+            var alienData = Aliens
+                .Where(a => !a.Destroyed)
+                .Select(a => new
+                {
+                    sx = a.Sprite.TopLeft.X,
+                    sy = a.Sprite.TopLeft.Y,
+                    sw = a.Sprite.Size.Width,
+                    sh = a.Sprite.Size.Height,
+                    dx = a.CurrentPosition.X,
+                    dy = a.CurrentPosition.Y,
+                    dw = a.Sprite.RenderSize.Width,
+                    dh = a.Sprite.RenderSize.Height,
+                    tint = a.HasBeenHit ? "" : (a.Row < RowTints.Length ? RowTints[a.Row] : RowTints[0]),
+                })
+                .ToList();
+
+            await _js.InvokeVoidAsync("canvasHelper.drawTintedAliens", _spriteSheet, alienData);
         }
 
         private async Task ProcessAudio()
@@ -508,7 +538,7 @@ namespace BlazorInvaders.GameObjects
         private async Task RenderAttractPointChart()
         {
             if (_context == null) return;
-            await _context.SetFontAsync("22px consolas");
+            await _context.SetFontAsync("22px Orbitron");
             await _context.SetFillStyleAsync("#FFD700");
             var title = "SCORE ADVANCE TABLE";
             var tl = await _context.MeasureTextAsync(title);
@@ -516,24 +546,22 @@ namespace BlazorInvaders.GameObjects
 
             var rows = new[]
             {
-                (sprite: new Sprite(12, 73, 24, 80), label: "= ???  PTS", tint: "rgba(255,0,0,0.22)"),
-                (sprite: new Sprite(0, 27, 20, 41),  label: "= 30  PTS", tint: RowTints[0]),
-                (sprite: new Sprite(0, 0, 20, 12),   label: "= 20  PTS", tint: RowTints[1]),
-                (sprite: new Sprite(20, 14, 40, 26),  label: "= 10  PTS", tint: RowTints[3]),
+                (sprite: new Sprite(12, 73, 24, 80), label: "= ???  PTS"),
+                (sprite: new Sprite(0, 27, 20, 41),  label: "= 30  PTS"),
+                (sprite: new Sprite(0, 0, 20, 12),   label: "= 20  PTS"),
+                (sprite: new Sprite(20, 14, 40, 26),  label: "= 10  PTS"),
             };
 
             var y = 170;
-            foreach (var (sprite, label, tint) in rows)
+            foreach (var (sprite, label) in rows)
             {
                 var sx = _width / 2 - 80;
                 var sy = y - sprite.RenderSize.Height;
-                await _context.SetFillStyleAsync(tint);
-                await _context.FillRectAsync(sx, sy, sprite.RenderSize.Width, sprite.RenderSize.Height);
                 await _context.DrawImageAsync(_spriteSheet,
                     sprite.TopLeft.X, sprite.TopLeft.Y, sprite.Size.Width, sprite.Size.Height,
                     sx, sy, sprite.RenderSize.Width, sprite.RenderSize.Height);
                 await _context.SetFillStyleAsync("white");
-                await _context.SetFontAsync("20px consolas");
+                await _context.SetFontAsync("20px Orbitron");
                 await _context.FillTextAsync(label, _width / 2 - 40, y);
                 y += 50;
             }
@@ -542,13 +570,13 @@ namespace BlazorInvaders.GameObjects
         private async Task RenderAttractLeaderboard()
         {
             if (_context == null) return;
-            await _context.SetFontAsync("26px consolas");
+            await _context.SetFontAsync("26px Orbitron");
             await _context.SetFillStyleAsync("#FFD700");
             var title = "TOP SCORES";
             var tl = await _context.MeasureTextAsync(title);
             await _context.FillTextAsync(title, _width / 2 - (tl.Width / 2), 130);
 
-            await _context.SetFontAsync("22px consolas");
+            await _context.SetFontAsync("22px Orbitron");
             await _context.SetFillStyleAsync("white");
 
             if (_topScores.Count == 0)
@@ -573,7 +601,7 @@ namespace BlazorInvaders.GameObjects
         private async Task RenderAttractStart()
         {
             if (_context == null) return;
-            await _context.SetFontAsync("28px consolas");
+            await _context.SetFontAsync("28px Orbitron");
             await _context.SetFillStyleAsync("white");
             var t = "Use arrow keys to move, space to fire";
             var l = await _context.MeasureTextAsync(t);
@@ -582,7 +610,7 @@ namespace BlazorInvaders.GameObjects
             l = await _context.MeasureTextAsync(t);
             await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 220);
             await _context.SetFillStyleAsync("#888");
-            await _context.SetFontAsync("18px consolas");
+            await _context.SetFontAsync("18px Orbitron");
             t = "P / Escape to pause";
             l = await _context.MeasureTextAsync(t);
             await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 265);
@@ -600,11 +628,11 @@ namespace BlazorInvaders.GameObjects
                 NewHighScore?.Invoke(this, EventArgs.Empty);
             }
 
-            await _context.SetFontAsync("36px consolas");
+            await _context.SetFontAsync("36px Orbitron");
             var text = "GAME OVER";
             var length = await _context.MeasureTextAsync(text);
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 - 30);
-            await _context.SetFontAsync("22px consolas");
+            await _context.SetFontAsync("22px Orbitron");
             text = "Press space to start a new game";
             length = await _context.MeasureTextAsync(text);
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 + 20);
@@ -619,7 +647,7 @@ namespace BlazorInvaders.GameObjects
             if (_lostALife)
             {
                 await _context.SetFillStyleAsync("red");
-                await _context.SetFontAsync("20px consolas");
+                await _context.SetFontAsync("20px Orbitron");
                 var msg = "You were hit!";
                 var ml = await _context.MeasureTextAsync(msg);
                 await _context.FillTextAsync(msg, _width / 2 - (ml.Width / 2), 55);
@@ -631,21 +659,12 @@ namespace BlazorInvaders.GameObjects
             if (aliveCount == 1)
             {
                 await _context.SetFillStyleAsync("#FF4444");
-                await _context.SetFontAsync("16px consolas");
+                await _context.SetFontAsync("16px Orbitron");
                 await _context.FillTextAsync("FRENZY!", 10, 45);
                 await _context.SetFillStyleAsync("white");
             }
 
-            foreach (var a in Aliens.Where(a => !a.Destroyed))
-            {
-                var tint = a.Row < RowTints.Length ? RowTints[a.Row] : "rgba(255,255,255,0.18)";
-                await _context.SetFillStyleAsync(tint);
-                await _context.FillRectAsync(a.CurrentPosition.X, a.CurrentPosition.Y,
-                    a.Sprite.RenderSize.Width, a.Sprite.RenderSize.Height);
-                await _context.DrawImageAsync(_spriteSheet,
-                    a.Sprite.TopLeft.X, a.Sprite.TopLeft.Y, a.Sprite.Size.Width, a.Sprite.Size.Height,
-                    a.CurrentPosition.X, a.CurrentPosition.Y, a.Sprite.RenderSize.Width, a.Sprite.RenderSize.Height);
-            }
+            // Aliens are rendered via RenderTintedAliens() (JS source-atop compositing)
 
             if (_player != null)
             {
@@ -689,7 +708,7 @@ namespace BlazorInvaders.GameObjects
                     if (_motherShip.HasBeenHit)
                     {
                         await _context.SetFillStyleAsync("#FFD700");
-                        await _context.SetFontAsync("14px consolas");
+                        await _context.SetFontAsync("14px Orbitron");
                         await _context.FillTextAsync($"+{_motherShip.Score}",
                             _motherShip.CurrentPosition.X, _motherShip.CurrentPosition.Y - 5);
                         await _context.SetFillStyleAsync("white");
@@ -766,7 +785,7 @@ namespace BlazorInvaders.GameObjects
             await _context.SetFillStyleAsync("rgba(0,0,0,0.55)");
             await _context.FillRectAsync(0, _height / 2 - 45, _width, 65);
             await _context.SetFillStyleAsync("#00FF88");
-            await _context.SetFontAsync("40px consolas");
+            await _context.SetFontAsync("40px Orbitron");
             var text = $"WAVE {_wave}";
             var length = await _context.MeasureTextAsync(text);
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 + 5);
@@ -776,7 +795,7 @@ namespace BlazorInvaders.GameObjects
         {
             if (_context == null) return;
             await _context.SetFillStyleAsync("#FFD700");
-            await _context.SetFontAsync("28px consolas");
+            await _context.SetFontAsync("28px Orbitron");
             var text = "PERFECT!  +500";
             var length = await _context.MeasureTextAsync(text);
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), 80);
@@ -788,11 +807,11 @@ namespace BlazorInvaders.GameObjects
             await _context.SetFillStyleAsync("rgba(0,0,0,0.6)");
             await _context.FillRectAsync(0, 0, _width, _height);
             await _context.SetFillStyleAsync("white");
-            await _context.SetFontAsync("48px consolas");
+            await _context.SetFontAsync("48px Orbitron");
             var text = "PAUSED";
             var length = await _context.MeasureTextAsync(text);
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 - 10);
-            await _context.SetFontAsync("20px consolas");
+            await _context.SetFontAsync("20px Orbitron");
             text = "Press P to resume";
             length = await _context.MeasureTextAsync(text);
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 + 40);

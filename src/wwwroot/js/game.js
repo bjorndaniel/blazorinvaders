@@ -63,3 +63,22 @@ window.localStorageInterop = {
     get: (key) => localStorage.getItem(key),
     set: (key, value) => localStorage.setItem(key, value)
 };
+
+window.canvasHelper = {
+    drawTintedAliens: function (spriteSheet, aliens) {
+        const canvas = document.querySelector('#canvasContainer canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        for (const a of aliens) {
+            ctx.drawImage(spriteSheet, a.sx, a.sy, a.sw, a.sh, a.dx, a.dy, a.dw, a.dh);
+            if (a.tint) {
+                ctx.globalCompositeOperation = 'source-atop';
+                ctx.globalAlpha = 0.65;
+                ctx.fillStyle = a.tint;
+                ctx.fillRect(a.dx, a.dy, a.dw, a.dh);
+                ctx.globalAlpha = 1.0;
+                ctx.globalCompositeOperation = 'source-over';
+            }
+        }
+    }
+};
