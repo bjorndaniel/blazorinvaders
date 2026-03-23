@@ -4,7 +4,8 @@
       "Bash(cd C:/Projects/bjorndaniel/blazorinvaders/src && dotnet build 2>&1)",
       "Bash(cd \"C:/Projects/bjorndaniel/blazorinvaders/src/api\" && dotnet build --nologo 2>&1)",
       "Bash(cd \"C:/Projects/bjorndaniel/blazorinvaders\" && dotnet build src/BlazorInvaders.sln --nologo 2>&1)",
-      "Bash(cd \"C:/Projects/bjorndaniel/blazorinvaders\" && dotnet build src/BlazorInvaders.sln --nologo -v q 2>&1)"
+      "Bash(cd \"C:/Projects/bjorndaniel/blazorinvaders\" && dotnet build src/BlazorInvaders.sln --nologo -v q 2>&1)",
+      "Bash(git remote:*)"
     ]
   }
 }

@@ -51,6 +51,7 @@ namespace BlazorInvaders.GameObjects
         }
 
         public bool HasBeenHit { get; set; }
+        public float HitTime { get; set; } = -1;
 
         public int Column { get; private set; }
 

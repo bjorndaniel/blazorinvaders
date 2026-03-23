@@ -12,6 +12,15 @@
         <h2>Blazor Invaders - a Space Invaders implementation</h2>
     </div>
 </div>
+<div class="row">
+    <div class="col text-center">
+        @if (_personalBest > 0)
+        {
+            <small style="color:#aaa">Your best: @_personalBest &nbsp;&nbsp;</small>
+        }
+        <a href="/leaderboard" style="color:#aaa; font-size:small">Leaderboard</a>
+    </div>
+</div>
 <div class="row justify-content-center">
     <div class="col text-center" id="canvas">
         <div tabindex="0" @onkeydown="@(async (e) => { await KeyDown(e); })" @onkeydown:preventDefault class="game-canvas" id="canvasContainer">
@@ -21,20 +30,28 @@
 </div>
 
 <img @ref="_spriteSheet" hidden src="assets/sprites_cleaned.png" />
+
 @code{
     BECanvasComponent _canvas = default!;
     ElementReference _spriteSheet;
     Game _game = default!;
     bool _disableKeyboard = false;
+    int _personalBest = 0;
+    bool _prevGameOver = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            _game = new Game(870, 500, Config, Http);
+            var stored = await JsRuntime.InvokeAsync<string?>("localStorageInterop.get", "personalBest");
+            if (int.TryParse(stored, out var pb))
+                _personalBest = pb;
+
+            _game = new Game(870, 500, Config, Http, JsRuntime);
             await _game.Init(_canvas, _spriteSheet);
             await JsRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this), 870, 500);
-            _game.NewHighScore += HighScore;
+            _game.NewHighScore += HighScoreHandler;
+            StateHasChanged();
         }
     }
 
@@ -42,10 +59,23 @@
     public async ValueTask GameLoop(float timeStamp)
     {
         if (_game.Started)
-        {
             _game.Update(timeStamp);
-        }
         await _game.Render();
+
+        if (_game.GameOver && !_prevGameOver)
+        {
+            _prevGameOver = true;
+            if (_game.Points > _personalBest)
+            {
+                _personalBest = _game.Points;
+                await JsRuntime.InvokeVoidAsync("localStorageInterop.set", "personalBest", _personalBest.ToString());
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+        else if (!_game.GameOver)
+        {
+            _prevGameOver = false;
+        }
     }
 
     [JSInvokable]
@@ -56,36 +86,34 @@
 
     protected async ValueTask KeyDown(KeyboardEventArgs e)
     {
-        if (_disableKeyboard)
+        if (_disableKeyboard) return;
+
+        if (e.Code == "KeyP" || e.Code == "Escape")
         {
+            _game.TogglePause();
             return;
         }
+
+        if (_game.Paused) return;
+
         if (e.Code == "ArrowLeft")
-        {
             _game.MovePlayer(Direction.Left);
-        }
         if (e.Code == "ArrowRight")
-        {
             _game.MovePlayer(Direction.Right);
-        }
         if (e.Code == "Space")
         {
             if (_game.Started)
-            {
                 _game.Fire();
-            }
             else
-            {
                 await JsRuntime.InvokeAsync<object>("startGame");
-            }
         }
     }
 
-    private async Task HighScore(object sender, EventArgs args)
+    private async Task HighScoreHandler(object sender, EventArgs args)
     {
         _disableKeyboard = true;
-        var highScoreModal = Modal.Show<SetHighScore>("New High score!");
-        var result = await highScoreModal.Result;
+        var modal = Modal.Show<SetHighScore>("New High Score!");
+        var result = await modal.Result;
         if (!result.Cancelled)
         {
             var score = result.Data as HighScore;
