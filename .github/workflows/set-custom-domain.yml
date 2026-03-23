@@ -48,11 +48,6 @@ jobs:
         run: |
           NEW_API_URL="https://${{ inputs.custom_domain }}/api"
 
-          az staticwebapp appsettings set \
-            --name "${{ inputs.app_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
-            --setting-names "FUNCTIONS_API_URL=$NEW_API_URL"
-
           gh secret set FUNCTIONS_API_URL \
             --body "$NEW_API_URL" \
             --repo "${{ github.repository }}"
