@@ -12,4 +12,11 @@
         Right,
         Left,
     }
+
+    public enum BombType
+    {
+        Straight,
+        Zigzag,
+        Rolling,
+    }
 }

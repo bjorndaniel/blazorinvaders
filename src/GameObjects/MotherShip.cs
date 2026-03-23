@@ -7,8 +7,6 @@ namespace BlazorInvaders.GameObjects
         Sprite _ship;
         Point _currentPosition;
         Sprite _explosion;
-        private static readonly int[] _scores = { 50, 100, 150, 300 };
-        private static readonly Random _rng = new();
 
         public MotherShip(Point start)
         {
@@ -29,14 +27,13 @@ namespace BlazorInvaders.GameObjects
 
         public bool HasBeenHit { get; set; }
 
-        public int Score { get; private set; }
+        public int Score { get; set; }
 
         public bool Destroyed { get; set; }
 
         public bool Collision(Shot s)
         {
             HasBeenHit = new Rectangle(CurrentPosition, Sprite.RenderSize).IntersectsWith(new Rectangle(s.CurrentPosition, s.Sprite.RenderSize));
-            if (HasBeenHit) Score = _scores[_rng.Next(_scores.Length)];
             return HasBeenHit;
         }
     }

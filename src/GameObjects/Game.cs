@@ -38,9 +38,13 @@ namespace BlazorInvaders.GameObjects
 
         private int _wave;
         private float _waveDisplayUntil;
+        private int _livesAtWaveStart;
+        private float _perfectBonusUntil;
 
         private bool _doubleShot;
         private float _doubleShotUntil;
+
+        private int _totalShotsFired;
 
         private bool _playShoot;
         private bool _playAlienDeath;
@@ -51,6 +55,25 @@ namespace BlazorInvaders.GameObjects
         private int _lastAliveCount;
         private float _lastMotherShipPing;
         private bool _newHighScoreFired;
+
+        // Attract screen
+        private int _attractState;
+        private float _attractStateStart;
+        private List<HighScore> _topScores = new();
+
+        // Deterministic mothership score table (authentic to original)
+        private static readonly int[] MotherShipScoreTable =
+            { 100, 50, 50, 100, 150, 100, 100, 50, 300, 100, 100, 100, 50, 150, 100 };
+
+        // Row colours (filter strings)
+        private static readonly string[] RowFilters =
+        {
+            "none",                                              // row 0 – Squid (white)
+            "sepia(1) saturate(8) hue-rotate(155deg)",          // row 1 – Crab  (cyan)
+            "sepia(1) saturate(8) hue-rotate(155deg)",          // row 2 – Crab  (cyan)
+            "sepia(1) saturate(6) hue-rotate(75deg)",           // row 3 – Octopus (yellow-green)
+            "sepia(1) saturate(6) hue-rotate(75deg)",           // row 4 – Octopus (yellow-green)
+        };
 
         public event Func<object, EventArgs, Task>? NewHighScore;
 
@@ -92,6 +115,7 @@ namespace BlazorInvaders.GameObjects
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     if (scores?.Count > 0)
                     {
+                        _topScores = scores.Take(3).ToList();
                         HighScore = scores[0].Score;
                         HighScoreName = scores[0].Name;
                     }
@@ -112,6 +136,7 @@ namespace BlazorInvaders.GameObjects
             _bunkers = CreateBunkers();
             _doubleShot = false;
             _doubleShotUntil = 0;
+            _totalShotsFired = 0;
             _newHighScoreFired = false;
             Started = true;
             Won = false;
@@ -122,6 +147,7 @@ namespace BlazorInvaders.GameObjects
             _player = new Player(_width, _height);
             _points = 0;
             _lives = 3;
+            _livesAtWaveStart = 3;
             _lastAliveCount = 55;
             _updateMarch = true;
             await Task.CompletedTask;
@@ -148,6 +174,16 @@ namespace BlazorInvaders.GameObjects
                 new Alien(AlienType.Octopus, new Point(i * 60 + 120, 270), i, 4),
             }).ToList();
 
+        private int GetMotherShipScore() =>
+            MotherShipScoreTable[_totalShotsFired % MotherShipScoreTable.Length];
+
+        private int GetAlienPoints(int row) => row switch
+        {
+            0      => 30,
+            1 or 2 => 20,
+            _      => 10,
+        };
+
         public void Update(float timeStamp)
         {
             if (!Started || Paused)
@@ -165,9 +201,17 @@ namespace BlazorInvaders.GameObjects
 
             if (_aliens.All(_ => _.Destroyed))
             {
+                // Perfect wave bonus
+                if (_lives == _livesAtWaveStart)
+                {
+                    _points += 500;
+                    _perfectBonusUntil = timeStamp + 2500;
+                }
+
                 _gameSpeed += 0.75;
                 _wave++;
                 _waveDisplayUntil = timeStamp + 2000;
+                _livesAtWaveStart = _lives;
                 _aliens = CreateAlienGrid();
                 _bunkers = CreateBunkers();
                 _lastAliveCount = 55;
@@ -178,7 +222,7 @@ namespace BlazorInvaders.GameObjects
                 _motherShip = new MotherShip(new Point(_width, 80));
         }
 
-        public async ValueTask Render()
+        public async ValueTask Render(float timeStamp = 0)
         {
             if (_context == null) return;
 
@@ -196,25 +240,15 @@ namespace BlazorInvaders.GameObjects
             if (GameOver)
                 await RenderGameOver();
             else if (Started)
-                await RenderGameFrame();
+                await RenderGameFrame(timeStamp);
             else
-            {
-                await _context.SetFontAsync("24px consolas");
-                var t = "Use arrow keys to move, space to fire";
-                var l = await _context.MeasureTextAsync(t);
-                await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 150);
-                t = "Press space to start";
-                l = await _context.MeasureTextAsync(t);
-                await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 200);
-                await _context.SetFillStyleAsync("#888");
-                await _context.SetFontAsync("18px consolas");
-                t = "P / Escape to pause";
-                l = await _context.MeasureTextAsync(t);
-                await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 240);
-            }
+                await RenderAttractScreen(timeStamp);
 
             if (Started && !GameOver && _gameTime.TotalTime <= _waveDisplayUntil)
                 await RenderWaveIndicator();
+
+            if (Started && !GameOver && timeStamp > 0 && timeStamp <= _perfectBonusUntil)
+                await RenderPerfectBonus();
 
             if (Paused)
                 await RenderPauseOverlay();
@@ -225,12 +259,12 @@ namespace BlazorInvaders.GameObjects
 
         private async Task ProcessAudio()
         {
-            if (_stopMarch)      { await _js.InvokeVoidAsync("gameAudio.stopMarch"); _stopMarch = false; }
-            if (_updateMarch)    { await _js.InvokeVoidAsync("gameAudio.march", _lastAliveCount); _updateMarch = false; }
-            if (_playShoot)      { await _js.InvokeVoidAsync("gameAudio.shoot"); _playShoot = false; }
-            if (_playAlienDeath) { await _js.InvokeVoidAsync("gameAudio.alienDeath"); _playAlienDeath = false; }
-            if (_playPlayerDeath){ await _js.InvokeVoidAsync("gameAudio.playerDeath"); _playPlayerDeath = false; }
-            if (_playMotherShip) { await _js.InvokeVoidAsync("gameAudio.mothership"); _playMotherShip = false; }
+            if (_stopMarch)       { await _js.InvokeVoidAsync("gameAudio.stopMarch"); _stopMarch = false; }
+            if (_updateMarch)     { await _js.InvokeVoidAsync("gameAudio.march", _lastAliveCount); _updateMarch = false; }
+            if (_playShoot)       { await _js.InvokeVoidAsync("gameAudio.shoot"); _playShoot = false; }
+            if (_playAlienDeath)  { await _js.InvokeVoidAsync("gameAudio.alienDeath"); _playAlienDeath = false; }
+            if (_playPlayerDeath) { await _js.InvokeVoidAsync("gameAudio.playerDeath"); _playPlayerDeath = false; }
+            if (_playMotherShip)  { await _js.InvokeVoidAsync("gameAudio.mothership"); _playMotherShip = false; }
         }
 
         public bool Started { get; private set; }
@@ -247,9 +281,14 @@ namespace BlazorInvaders.GameObjects
         public void Fire()
         {
             if (_player == null) return;
+            var maxActive = _doubleShot ? 2 : 1;
+            if (_shots.Count(s => !s.Remove) >= maxActive) return;
+
             _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 13, _player.CurrentPosition.Y)));
             if (_doubleShot)
                 _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 25, _player.CurrentPosition.Y)));
+
+            _totalShotsFired++;
             _playShoot = true;
         }
 
@@ -280,7 +319,7 @@ namespace BlazorInvaders.GameObjects
                 {
                     s.Remove = true;
                     hit.HitTime = _gameTime.TotalTime;
-                    _points += 100;
+                    _points += GetAlienPoints(hit.Row);
                     _playAlienDeath = true;
 
                     if (_random.Next(100) < 5)
@@ -296,6 +335,7 @@ namespace BlazorInvaders.GameObjects
 
                 if (_motherShip != null && !_motherShip.HasBeenHit && _motherShip.Collision(s))
                 {
+                    _motherShip.Score = GetMotherShipScore();
                     _points += _motherShip.Score;
                     s.Remove = true;
                     _playAlienDeath = true;
@@ -305,7 +345,12 @@ namespace BlazorInvaders.GameObjects
 
         private void UpdateAliens()
         {
-            if (_gameTime.TotalTime - _lastUpdate <= (250 - 100 * _gameSpeed))
+            var alive = _aliens.Count(a => !a.Destroyed && !a.HasBeenHit);
+            var isFrenzy = alive == 1;
+
+            // In frenzy mode the last alien moves every ~50ms; otherwise use normal speed
+            var threshold = isFrenzy ? 50 : (250 - 100 * _gameSpeed);
+            if (_gameTime.TotalTime - _lastUpdate <= threshold)
                 return;
 
             _lastUpdate = _gameTime.TotalTime;
@@ -344,8 +389,16 @@ namespace BlazorInvaders.GameObjects
 
         private void UpdateBombs()
         {
-            if ((!_bombs.Any() || _bombs.All(_ => _.Remove)) &&
-                _random.Next(0, 100) > (85 + (_aliens.Count(_ => _.Destroyed) / 5)))
+            var alive = _aliens.Count(a => !a.Destroyed && !a.HasBeenHit);
+            var isFrenzy = alive == 1;
+
+            // In frenzy the last alien always fires; otherwise use normal probability
+            var shouldSpawn = isFrenzy
+                ? !_bombs.Any(_ => !_.Remove)
+                : (!_bombs.Any() || _bombs.All(_ => _.Remove)) &&
+                  _random.Next(0, 100) > (85 + (_aliens.Count(_ => _.Destroyed) / 5));
+
+            if (shouldSpawn)
             {
                 var xColumn = _random.Next(0, 11);
                 var alien = _aliens.OrderByDescending(_ => _.CurrentPosition.Y)
@@ -359,9 +412,12 @@ namespace BlazorInvaders.GameObjects
                     counter++;
                 }
                 if (alien != null)
-                    _bombs.Add(new Bomb(new Point(
-                        alien.CurrentPosition.X + alien.Sprite.RenderSize.Width / 2,
-                        alien.CurrentPosition.Y)));
+                {
+                    var type = (BombType)_random.Next(3);
+                    _bombs.Add(new Bomb(
+                        new Point(alien.CurrentPosition.X + alien.Sprite.RenderSize.Width / 2, alien.CurrentPosition.Y),
+                        type));
+                }
             }
 
             foreach (var b in _bombs.Where(_ => !_.Remove))
@@ -401,11 +457,7 @@ namespace BlazorInvaders.GameObjects
             foreach (var p in _powerUps.Where(_ => !_.Collected))
             {
                 p.Move();
-                if (p.Position.Y > _height)
-                {
-                    p.Collected = true;
-                    continue;
-                }
+                if (p.Position.Y > _height) { p.Collected = true; continue; }
                 if (_player != null &&
                     new Rectangle(_player.CurrentPosition, _player.Sprite.RenderSize)
                         .IntersectsWith(new Rectangle(p.Position, PowerUp.Size)))
@@ -424,6 +476,114 @@ namespace BlazorInvaders.GameObjects
                 await _context!.SetFillStyleAsync($"rgba(255,255,255,{brightness:F2})");
                 await _context.FillRectAsync(x, y, size, size);
             }
+        }
+
+        private async Task RenderAttractScreen(float timeStamp)
+        {
+            if (_context == null) return;
+
+            // Cycle attract states every 4 seconds
+            if (timeStamp > 0 && timeStamp - _attractStateStart > 4000)
+            {
+                _attractState = (_attractState + 1) % 3;
+                _attractStateStart = timeStamp;
+            }
+
+            await _context.SetFillStyleAsync("white");
+
+            switch (_attractState)
+            {
+                case 0:
+                    await RenderAttractPointChart();
+                    break;
+                case 1:
+                    await RenderAttractLeaderboard();
+                    break;
+                default:
+                    await RenderAttractStart();
+                    break;
+            }
+        }
+
+        private async Task RenderAttractPointChart()
+        {
+            if (_context == null) return;
+            await _context.SetFontAsync("22px consolas");
+            await _context.SetFillStyleAsync("#FFD700");
+            var title = "SCORE ADVANCE TABLE";
+            var tl = await _context.MeasureTextAsync(title);
+            await _context.FillTextAsync(title, _width / 2 - (tl.Width / 2), 120);
+
+            var rows = new[]
+            {
+                (sprite: new Sprite(12, 73, 24, 80), label: "= ???  PTS", filter: "none"),
+                (sprite: new Sprite(0, 27, 20, 41),  label: "= 30  PTS", filter: RowFilters[0]),
+                (sprite: new Sprite(0, 0, 20, 12),   label: "= 20  PTS", filter: RowFilters[1]),
+                (sprite: new Sprite(20, 14, 40, 26),  label: "= 10  PTS", filter: RowFilters[3]),
+            };
+
+            var y = 170;
+            foreach (var (sprite, label, filter) in rows)
+            {
+                await _context.SetFilterAsync(filter);
+                await _context.DrawImageAsync(_spriteSheet,
+                    sprite.TopLeft.X, sprite.TopLeft.Y, sprite.Size.Width, sprite.Size.Height,
+                    _width / 2 - 80, y - sprite.RenderSize.Height, sprite.RenderSize.Width, sprite.RenderSize.Height);
+                await _context.SetFilterAsync("none");
+                await _context.SetFillStyleAsync("white");
+                await _context.SetFontAsync("20px consolas");
+                await _context.FillTextAsync(label, _width / 2 - 40, y);
+                y += 50;
+            }
+        }
+
+        private async Task RenderAttractLeaderboard()
+        {
+            if (_context == null) return;
+            await _context.SetFontAsync("26px consolas");
+            await _context.SetFillStyleAsync("#FFD700");
+            var title = "TOP SCORES";
+            var tl = await _context.MeasureTextAsync(title);
+            await _context.FillTextAsync(title, _width / 2 - (tl.Width / 2), 130);
+
+            await _context.SetFontAsync("22px consolas");
+            await _context.SetFillStyleAsync("white");
+
+            if (_topScores.Count == 0)
+            {
+                var none = "NO SCORES YET";
+                var nl = await _context.MeasureTextAsync(none);
+                await _context.FillTextAsync(none, _width / 2 - (nl.Width / 2), 200);
+            }
+            else
+            {
+                var y = 180;
+                for (int i = 0; i < _topScores.Count; i++)
+                {
+                    var line = $"{i + 1}.  {_topScores[i].Name,-5} {_topScores[i].Score:D5}";
+                    var ll = await _context.MeasureTextAsync(line);
+                    await _context.FillTextAsync(line, _width / 2 - (ll.Width / 2), y);
+                    y += 45;
+                }
+            }
+        }
+
+        private async Task RenderAttractStart()
+        {
+            if (_context == null) return;
+            await _context.SetFontAsync("28px consolas");
+            await _context.SetFillStyleAsync("white");
+            var t = "Use arrow keys to move, space to fire";
+            var l = await _context.MeasureTextAsync(t);
+            await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 160);
+            t = "Press space to start";
+            l = await _context.MeasureTextAsync(t);
+            await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 220);
+            await _context.SetFillStyleAsync("#888");
+            await _context.SetFontAsync("18px consolas");
+            t = "P / Escape to pause";
+            l = await _context.MeasureTextAsync(t);
+            await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 265);
         }
 
         private async Task RenderGameOver()
@@ -448,7 +608,7 @@ namespace BlazorInvaders.GameObjects
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 + 20);
         }
 
-        private async Task RenderGameFrame()
+        private async Task RenderGameFrame(float timeStamp)
         {
             if (_context == null) return;
 
@@ -464,11 +624,24 @@ namespace BlazorInvaders.GameObjects
                 await _context.SetFillStyleAsync("white");
             }
 
+            // Check last-alien frenzy
+            var aliveCount = _aliens.Count(a => !a.Destroyed && !a.HasBeenHit);
+            if (aliveCount == 1)
+            {
+                await _context.SetFillStyleAsync("#FF4444");
+                await _context.SetFontAsync("16px consolas");
+                await _context.FillTextAsync("FRENZY!", 10, 45);
+                await _context.SetFillStyleAsync("white");
+            }
+
             foreach (var a in Aliens.Where(a => !a.Destroyed))
             {
+                var filter = a.Row < RowFilters.Length ? RowFilters[a.Row] : "none";
+                await _context.SetFilterAsync(filter);
                 await _context.DrawImageAsync(_spriteSheet,
                     a.Sprite.TopLeft.X, a.Sprite.TopLeft.Y, a.Sprite.Size.Width, a.Sprite.Size.Height,
                     a.CurrentPosition.X, a.CurrentPosition.Y, a.Sprite.RenderSize.Width, a.Sprite.RenderSize.Height);
+                await _context.SetFilterAsync("none");
             }
 
             if (_player != null)
@@ -594,6 +767,16 @@ namespace BlazorInvaders.GameObjects
             var text = $"WAVE {_wave}";
             var length = await _context.MeasureTextAsync(text);
             await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 + 5);
+        }
+
+        private async Task RenderPerfectBonus()
+        {
+            if (_context == null) return;
+            await _context.SetFillStyleAsync("#FFD700");
+            await _context.SetFontAsync("28px consolas");
+            var text = "PERFECT!  +500";
+            var length = await _context.MeasureTextAsync(text);
+            await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), 80);
         }
 
         private async Task RenderPauseOverlay()

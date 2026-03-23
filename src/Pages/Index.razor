@@ -60,7 +60,7 @@
     {
         if (_game.Started)
             _game.Update(timeStamp);
-        await _game.Render();
+        await _game.Render(timeStamp);
 
         if (_game.GameOver && !_prevGameOver)
         {
