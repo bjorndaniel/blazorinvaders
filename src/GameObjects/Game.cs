@@ -29,7 +29,6 @@ namespace BlazorInvaders.GameObjects
         private MotherShip? _motherShip;
         private readonly HttpClient _client;
         private readonly string? _apiUrl;
-        public Guid HighScoreGuid { get; set; }
         public string? HighScoreName { get; set; }
 
         public event Func<object, EventArgs, Task>? NewHighScore;
@@ -47,14 +46,13 @@ namespace BlazorInvaders.GameObjects
             _context = await canvas.CreateCanvas2DAsync();
             _gameSpeed = 0;
             _spriteSheet = spriteSheet;
-            HighScoreGuid = Guid.NewGuid();
             var result = await _client.GetAsync($"{_apiUrl}/gethighscore");
             if (result.IsSuccessStatusCode)
             {
-                var x = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(x) && x != "null")
+                var content = await result.Content.ReadAsStringAsync().ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(content) && content != "null")
                 {
-                    var highScore = JsonSerializer.Deserialize<HighScore>(x);
+                    var highScore = JsonSerializer.Deserialize<HighScore>(content);
                     if (highScore != null)
                     {
                         HighScore = highScore.Score;
@@ -67,18 +65,9 @@ namespace BlazorInvaders.GameObjects
         public async ValueTask Start(float time)
         {
             _gameSpeed = 0;
-            HighScoreGuid = Guid.NewGuid();
-            _aliens = new List<Alien>();
+            _aliens = CreateAlienGrid();
             _shots = new List<Shot>();
             _bombs = new List<Bomb>();
-            for (int i = 0; i < 11; i++)
-            {
-                _aliens.Add(new Alien(AlienType.Squid, new Point((i * 60 + 120), 100), i, 0));
-                _aliens.Add(new Alien(AlienType.Crab, new Point((i * 60 + 120), 145), i, 1));
-                _aliens.Add(new Alien(AlienType.Crab, new Point((i * 60 + 120), 190), i, 2));
-                _aliens.Add(new Alien(AlienType.Octopus, new Point((i * 60 + 120), 235), i, 3));
-                _aliens.Add(new Alien(AlienType.Octopus, new Point((i * 60 + 120), 270), i, 4));
-            }
             Started = true;
             Won = false;
             GameOver = false;
@@ -90,6 +79,16 @@ namespace BlazorInvaders.GameObjects
             _lives = 3;
             await Task.CompletedTask;
         }
+
+        private List<Alien> CreateAlienGrid() =>
+            Enumerable.Range(0, 11).SelectMany(i => new[]
+            {
+                new Alien(AlienType.Squid,   new Point(i * 60 + 120, 100), i, 0),
+                new Alien(AlienType.Crab,    new Point(i * 60 + 120, 145), i, 1),
+                new Alien(AlienType.Crab,    new Point(i * 60 + 120, 190), i, 2),
+                new Alien(AlienType.Octopus, new Point(i * 60 + 120, 235), i, 3),
+                new Alien(AlienType.Octopus, new Point(i * 60 + 120, 270), i, 4),
+            }).ToList();
 
         public void Update(float timeStamp)
         {
@@ -104,15 +103,7 @@ namespace BlazorInvaders.GameObjects
             if (_aliens.All(_ => _.Destroyed))
             {
                 _gameSpeed += 0.75;
-                _aliens.Clear();
-                for (int i = 0; i < 11; i++)
-                {
-                    _aliens.Add(new Alien(AlienType.Squid, new Point((i * 60 + 120), 100), i, 0));
-                    _aliens.Add(new Alien(AlienType.Crab, new Point((i * 60 + 120), 145), i, 1));
-                    _aliens.Add(new Alien(AlienType.Crab, new Point((i * 60 + 120), 190), i, 2));
-                    _aliens.Add(new Alien(AlienType.Octopus, new Point((i * 60 + 120), 235), i, 3));
-                    _aliens.Add(new Alien(AlienType.Octopus, new Point((i * 60 + 120), 270), i, 4));
-                }
+                _aliens = CreateAlienGrid();
             }
             if (_motherShip == null && _random.Next(100) > 90)
             {
@@ -261,7 +252,6 @@ namespace BlazorInvaders.GameObjects
                     _removeLifeBanner = _gameTime.TotalTime;
                 }
             }
-            var x = _gameTime.TotalTime;
             if (_lostALife && _gameTime.TotalTime - _removeLifeBanner > 1000)
             {
                 _lostALife = false;

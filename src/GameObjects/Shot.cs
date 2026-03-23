@@ -4,7 +4,7 @@ namespace BlazorInvaders.GameObjects
 {
     public class Shot
     {
-        Sprite _beam;//TODO: Get movement sprite
+        Sprite _beam;
         Point _currentPosition;
         public Shot(Point start)
         {

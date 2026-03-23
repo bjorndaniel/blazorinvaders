@@ -32,8 +32,6 @@
     private char First { get; set; }
     private char Second { get; set; }
     private char Third { get; set; }
-    protected override void OnInitialized() { }
-
     async Task SaveHighScore()
     {
         _highScore = new HighScore

@@ -4,7 +4,7 @@ namespace BlazorInvaders.GameObjects
 {
     public class Bomb
     {
-        Sprite _bomb; //TODO: Get movement sprite
+        Sprite _bomb;
         Point _currentPosition;
         public Bomb(Point start)
         {

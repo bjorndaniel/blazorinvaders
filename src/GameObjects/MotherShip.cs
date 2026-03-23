@@ -4,7 +4,7 @@ namespace BlazorInvaders.GameObjects
 {
     public class MotherShip
     {
-        Sprite _ship; //TODO: Get movement sprite
+        Sprite _ship;
         Point _currentPosition;
         Sprite _explosion;
 
