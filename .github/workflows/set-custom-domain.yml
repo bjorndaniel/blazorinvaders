@@ -14,6 +14,10 @@ on:
         description: 'Resource group name'
         required: true
         default: 'blazorinvaders-rg'
+      function_app_name:
+        description: 'Function App name'
+        required: true
+        default: 'blazorinvaders-api'
 
 jobs:
   set_domain:
@@ -42,15 +46,16 @@ jobs:
             --resource-group "${{ inputs.resource_group }}" \
             --hostname "${{ inputs.custom_domain }}"
 
-      - name: Update API URL to use custom domain
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+      - name: Add custom domain to Function App CORS
         run: |
-          NEW_API_URL="https://${{ inputs.custom_domain }}/api"
-
-          gh secret set FUNCTIONS_API_URL \
-            --body "$NEW_API_URL" \
-            --repo "${{ github.repository }}"
+          az functionapp cors add \
+            --name "${{ inputs.function_app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --allowed-origins "https://${{ inputs.custom_domain }}"
+          az functionapp cors add \
+            --name "${{ inputs.function_app_name }}" \
+            --resource-group "${{ inputs.resource_group }}" \
+            --allowed-origins "https://www.${{ inputs.custom_domain }}"
 
       - name: Summary
         run: |
@@ -59,8 +64,4 @@ jobs:
           echo "| | |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| **Domain** | https://${{ inputs.custom_domain }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **API URL** | https://${{ inputs.custom_domain }}/api |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "Azure will provision a free SSL certificate automatically (may take a few minutes)." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Trigger **Deploy** to rebuild the app with the updated API URL." >> $GITHUB_STEP_SUMMARY
