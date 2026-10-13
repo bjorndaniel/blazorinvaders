@@ -15,6 +15,20 @@ namespace BlazorInvaders.GameObjects
         // Pixels per step while a direction is held (360 px/s)
         public const int PlayerSpeed = 6;
 
+        public const int MaxLives = 5;
+        private const int PowerUpDropPercent = 5;
+        private const float RapidFireIntervalMs = 120;
+
+        // Relative drop chance of each power-up type
+        private static readonly (PowerUpType Type, int Weight)[] PowerUpWeights =
+        {
+            (PowerUpType.DoubleShot, 30),
+            (PowerUpType.RapidFire,  25),
+            (PowerUpType.Shield,     20),
+            (PowerUpType.Piercing,   20),
+            (PowerUpType.ExtraLife,   5),
+        };
+
         // Deterministic mothership score table (authentic to original)
         private static readonly int[] MotherShipScoreTable =
             { 100, 50, 50, 100, 150, 100, 100, 50, 300, 100, 100, 100, 50, 150, 100 };
@@ -45,11 +59,13 @@ namespace BlazorInvaders.GameObjects
 
         private int _wave;
         private float _waveDisplayUntil;
-        private int _livesAtWaveStart;
+        private bool _hitThisWave;
         private float _perfectBonusUntil;
 
-        private bool _doubleShot;
-        private float _doubleShotUntil;
+        // Game time at which each timed power-up runs out, indexed by PowerUpType
+        private readonly float[] _powerUpUntil = new float[Enum.GetValues<PowerUpType>().Length];
+        private bool _shield;
+        private float _lastFireTime;
 
         private int _totalShotsFired;
         private readonly ComboTracker _combo = new();
@@ -80,8 +96,21 @@ namespace BlazorInvaders.GameObjects
         public int Points => _points;
         public int Lives => _lives;
         public int Wave => _wave;
-        public bool DoubleShot => _doubleShot;
+        public bool DoubleShot => IsActive(PowerUpType.DoubleShot);
+        public bool HasShield => _shield;
         public bool LostALife { get; private set; }
+
+        /// <summary>Whether a power-up is in effect. Extra life is instant, so never active.</summary>
+        public bool IsActive(PowerUpType type) => type switch
+        {
+            PowerUpType.Shield    => _shield,
+            PowerUpType.ExtraLife => false,
+            _                     => Time < _powerUpUntil[(int)type],
+        };
+
+        /// <summary>Time left on a timed power-up in ms, or 0.</summary>
+        public float RemainingMs(PowerUpType type) =>
+            IsActive(type) && type is not PowerUpType.Shield ? _powerUpUntil[(int)type] - Time : 0;
 
         /// <summary>Consecutive hits; see <see cref="ComboTracker"/>.</summary>
         public int Combo => _combo.Count;
@@ -129,8 +158,9 @@ namespace BlazorInvaders.GameObjects
             _bombs = new List<Bomb>();
             _powerUps = new List<PowerUp>();
             _bunkers = CreateBunkers();
-            _doubleShot = false;
-            _doubleShotUntil = 0;
+            Array.Clear(_powerUpUntil);
+            _shield = false;
+            _lastFireTime = float.NegativeInfinity;
             _totalShotsFired = 0;
             _combo.Break();
             Started = true;
@@ -143,7 +173,7 @@ namespace BlazorInvaders.GameObjects
             _player = new Player(_width, _height);
             _points = 0;
             _lives = 3;
-            _livesAtWaveStart = 3;
+            _hitThisWave = false;
             _lastAliveCount = 55;
             _marchCount = _lastAliveCount;
             _events.Clear();
@@ -157,14 +187,21 @@ namespace BlazorInvaders.GameObjects
         public void Fire()
         {
             if (_player == null) return;
-            var maxActive = _doubleShot ? 2 : 1;
-            if (_shots.Count(s => !s.Remove) >= maxActive) return;
+            var perVolley = DoubleShot ? 2 : 1;
+            var rapid = IsActive(PowerUpType.RapidFire);
+            var maxActive = (rapid ? 3 : 1) * perVolley;
+            if (_shots.Count(s => !s.Remove) + perVolley > maxActive) return;
+            // Space rapid-fire volleys out so they don't leave as one clump
+            if (rapid && Time - _lastFireTime < RapidFireIntervalMs) return;
 
-            var volley = _combo.StartVolley(_doubleShot ? 2 : 1);
-            _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 13, _player.CurrentPosition.Y)) { Volley = volley });
-            if (_doubleShot)
-                _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 25, _player.CurrentPosition.Y)) { Volley = volley });
+            var volley = _combo.StartVolley(perVolley);
+            var piercing = IsActive(PowerUpType.Piercing);
+            var y = _player.CurrentPosition.Y;
+            _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 13, y)) { Volley = volley, Piercing = piercing });
+            if (perVolley == 2)
+                _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 25, y)) { Volley = volley, Piercing = piercing });
 
+            _lastFireTime = Time;
             _totalShotsFired++;
             _sounds |= SoundEffect.Shoot;
         }
@@ -218,9 +255,6 @@ namespace BlazorInvaders.GameObjects
             _gameTime.TotalTime += StepMs;
             var now = _gameTime.TotalTime;
 
-            if (_doubleShot && now > _doubleShotUntil)
-                _doubleShot = false;
-
             ApplyInput();
             UpdateBombs();
             UpdateAliens();
@@ -236,7 +270,7 @@ namespace BlazorInvaders.GameObjects
             if (_aliens.All(_ => _.Destroyed))
             {
                 // Perfect wave bonus
-                if (_lives == _livesAtWaveStart)
+                if (!_hitThisWave)
                 {
                     _points += 500;
                     _perfectBonusUntil = now + 2500;
@@ -245,7 +279,7 @@ namespace BlazorInvaders.GameObjects
                 _gameSpeed += 0.75;
                 _wave++;
                 _waveDisplayUntil = now + 2000;
-                _livesAtWaveStart = _lives;
+                _hitThisWave = false;
                 _aliens = CreateAlienGrid();
                 _bunkers = CreateBunkers();
                 _lastAliveCount = 55;
@@ -342,10 +376,11 @@ namespace BlazorInvaders.GameObjects
                     _sounds |= SoundEffect.AlienDeath;
                     Raise(GameEventType.AlienKilled, hit.CurrentPosition, hit.Sprite.RenderSize, points, hit.Row);
                     RegisterHit(s);
-                    EndShot(s);
+                    if (!s.Piercing)
+                        EndShot(s);
 
-                    if (_random.Next(100) < 5)
-                        _powerUps.Add(new PowerUp(hit.CurrentPosition));
+                    if (_random.Next(100) < PowerUpDropPercent)
+                        _powerUps.Add(new PowerUp(hit.CurrentPosition, RollPowerUpType()));
 
                     var alive = AliveCount;
                     if (alive != _lastAliveCount)
@@ -363,10 +398,30 @@ namespace BlazorInvaders.GameObjects
                     _sounds |= SoundEffect.AlienDeath;
                     Raise(GameEventType.MotherShipKilled, _motherShip.CurrentPosition, _motherShip.Sprite.RenderSize, _motherShip.Score);
                     RegisterHit(s);
-                    EndShot(s);
+                    if (!s.Piercing)
+                        EndShot(s);
                 }
             }
         }
+
+        internal PowerUpType RollPowerUpType()
+        {
+            // No extra lives beyond the cap
+            var candidates = PowerUpWeights
+                .Where(w => w.Type != PowerUpType.ExtraLife || _lives < MaxLives)
+                .ToArray();
+            var roll = _random.Next(candidates.Sum(w => w.Weight));
+            foreach (var (type, weight) in candidates)
+            {
+                if (roll < weight) return type;
+                roll -= weight;
+            }
+            return candidates[^1].Type;
+        }
+
+        /// <summary>Drops a power-up at a position (for tests).</summary>
+        internal void SpawnPowerUp(PowerUpType type, Point position) =>
+            _powerUps.Add(new PowerUp(position, type));
 
         private void RegisterHit(Shot s)
         {
@@ -473,9 +528,20 @@ namespace BlazorInvaders.GameObjects
 
                 if (_player != null && _player.Collision(b))
                 {
+                    b.Remove = true;
+                    if (_shield)
+                    {
+                        // The shield takes this hit instead of the ship
+                        _shield = false;
+                        _player.HasBeenHit = false;
+                        _sounds |= SoundEffect.ShieldBlock;
+                        Raise(GameEventType.ShieldBlocked, _player.CurrentPosition, _player.Sprite.RenderSize);
+                        continue;
+                    }
+
+                    _hitThisWave = true;
                     _lives--;
                     LostALife = true;
-                    b.Remove = true;
                     _removeLifeBanner = _gameTime.TotalTime;
                     _sounds |= SoundEffect.PlayerDeath;
                     Raise(GameEventType.PlayerHit, _player.CurrentPosition, _player.Sprite.RenderSize);
@@ -500,10 +566,28 @@ namespace BlazorInvaders.GameObjects
                         .IntersectsWith(new Rectangle(p.Position, PowerUp.Size)))
                 {
                     p.Collected = true;
-                    _doubleShot = true;
-                    _doubleShotUntil = _gameTime.TotalTime + 10000;
+                    Collect(p);
                 }
             }
+        }
+
+        private void Collect(PowerUp p)
+        {
+            switch (p.Type)
+            {
+                case PowerUpType.Shield:
+                    _shield = true;
+                    break;
+                case PowerUpType.ExtraLife:
+                    _lives = Math.Min(_lives + 1, MaxLives);
+                    break;
+                default:
+                    // Collecting again while active restarts the timer
+                    _powerUpUntil[(int)p.Type] = Time + (p.Type == PowerUpType.Piercing ? 8000 : 10000);
+                    break;
+            }
+            _sounds |= SoundEffect.PowerUp;
+            Raise(GameEventType.PowerUpCollected, p.Position, PowerUp.Size, variant: (int)p.Type);
         }
 
         private void UpdateMotherShip()

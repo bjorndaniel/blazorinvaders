@@ -14,6 +14,8 @@ namespace BlazorInvaders.GameObjects
         public Sprite Sprite => _beam;
         public bool Remove { get; set; }
         public Volley Volley { get; init; } = new();
+        /// <summary>Passes through aliens instead of stopping at the first one.</summary>
+        public bool Piercing { get; init; }
         public Point CurrentPosition => _currentPosition;
         public void Move() =>
             _currentPosition = new Point(_currentPosition.X, _currentPosition.Y - 20);

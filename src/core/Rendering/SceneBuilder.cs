@@ -22,6 +22,16 @@ namespace BlazorInvaders.Rendering
             "#78ff3c",   // row 4 – Octopus  (green)
         };
 
+        // Indexed by PowerUpType
+        private static readonly (string Color, string Letter, string Name, string Hud)[] PowerUpStyles =
+        {
+            ("#FFD700", "D", "DOUBLE SHOT", "2X SHOT"),
+            ("#FF8C00", "R", "RAPID FIRE",  "RAPID"),
+            ("#00E5FF", "S", "SHIELD",      "SHIELD"),
+            ("#FF40FF", "P", "PIERCING",    "PIERCE"),
+            ("#40FF40", "+", "+1 LIFE",     ""),
+        };
+
         private static readonly Sprite LifeIcon = new(20, 47, 38, 59);
 
         private static readonly (Sprite sprite, string label)[] ScoreTable =
@@ -50,7 +60,6 @@ namespace BlazorInvaders.Rendering
             var h = engine.Height;
 
             var header = $"Score: {engine.Points:D5}   Hi: {engine.HighScore} {engine.HighScoreName}";
-            if (engine.DoubleShot) header += "  * 2x SHOT";
             Text(header, 10, 22, 18, White);
 
             if (engine.Started && engine.Multiplier > 1)
@@ -111,6 +120,8 @@ namespace BlazorInvaders.Rendering
                     GameEventType.PlayerHit => (null, White),
                     GameEventType.BunkerHit => (null, BunkerColor(e.Variant)),
                     GameEventType.ComboUp => ($"COMBO x{e.Value}!", Gold),
+                    GameEventType.PowerUpCollected => (PowerUpStyles[e.Variant].Name, PowerUpStyles[e.Variant].Color),
+                    GameEventType.ShieldBlocked => (null, PowerUpStyles[(int)PowerUpType.Shield].Color),
                     _ => ((string?)null, (string?)null),
                 };
 
@@ -154,10 +165,19 @@ namespace BlazorInvaders.Rendering
                 Text("FRENZY!", 10, 45, 16, "#FF4444");
 
             if (engine.Player is { } player)
+            {
                 Sprite(player.Sprite, player.CurrentPosition.X, player.CurrentPosition.Y);
+                if (engine.HasShield)
+                {
+                    var size = player.Sprite.RenderSize;
+                    Circle(player.CurrentPosition.X + size.Width / 2, player.CurrentPosition.Y + size.Height / 2, 30,
+                        PowerUpStyles[(int)PowerUpType.Shield].Color, 2);
+                }
+            }
 
             foreach (var s in engine.Shots)
-                Sprite(s.Sprite, s.CurrentPosition.X, s.CurrentPosition.Y);
+                Sprite(s.Sprite, s.CurrentPosition.X, s.CurrentPosition.Y,
+                    tint: s.Piercing ? PowerUpStyles[(int)PowerUpType.Piercing].Color : null);
 
             foreach (var b in engine.Bombs)
                 Sprite(b.Sprite, b.CurrentPosition.X, b.CurrentPosition.Y);
@@ -167,16 +187,36 @@ namespace BlazorInvaders.Rendering
                 Sprite(ship.Sprite, ship.CurrentPosition.X, ship.CurrentPosition.Y);
 
             foreach (var p in engine.PowerUps)
-                Diamond(p.Position.X, p.Position.Y, PowerUp.Size.Width, Gold);
+            {
+                var style = PowerUpStyles[(int)p.Type];
+                Diamond(p.Position.X, p.Position.Y, PowerUp.Size.Width, style.Color);
+                Text(style.Letter, p.Position.X + PowerUp.Size.Width / 2, p.Position.Y + 12, 10, "black", centered: true);
+            }
 
             for (int i = 0; i < engine.Lives - 1; i++)
                 Sprite(LifeIcon, w - (i + 1) * 28 - 10, h - 24, LifeIcon.Size.Width, LifeIcon.Size.Height);
+
+            PowerUpStatus(engine, h - 10);
 
             // Aliens last so they sit above bunkers and the player but below the overlays
             foreach (var a in engine.Aliens.Where(a => !a.Destroyed))
             {
                 var tint = a.HasBeenHit ? null : RowTints[a.Row < RowTints.Length ? a.Row : 0];
                 Sprite(a.Sprite, a.CurrentPosition.X, a.CurrentPosition.Y, tint: tint);
+            }
+        }
+
+        // Active power-ups along the bottom left, e.g. "RAPID 7  SHIELD"
+        private void PowerUpStatus(GameEngine engine, int y)
+        {
+            var x = 10;
+            foreach (var type in Enum.GetValues<PowerUpType>())
+            {
+                if (!engine.IsActive(type)) continue;
+                var style = PowerUpStyles[(int)type];
+                var seconds = (int)Math.Ceiling(engine.RemainingMs(type) / 1000);
+                Text(seconds > 0 ? $"{style.Hud} {seconds}" : style.Hud, x, y, 14, style.Color);
+                x += 120;
             }
         }
 
@@ -268,6 +308,16 @@ namespace BlazorInvaders.Rendering
 
         private void CenteredText(string text, int width, int y, int fontSize, string color) =>
             Text(text, width / 2, y, fontSize, color, centered: true);
+
+        private void Circle(int x, int y, int radius, string color, int lineWidth = 0)
+        {
+            _cmds.Add(Scene.OpCircle);
+            _cmds.Add(x);
+            _cmds.Add(y);
+            _cmds.Add(radius);
+            _cmds.Add(Str(color));
+            _cmds.Add(lineWidth);
+        }
 
         private void Diamond(int x, int y, int size, string color)
         {

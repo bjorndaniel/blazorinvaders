@@ -12,6 +12,7 @@ namespace BlazorInvaders.Rendering
         public const int OpRect = 2;     // x, y, w, h, color
         public const int OpText = 3;     // text, x, y, font, color, centered (0/1)
         public const int OpDiamond = 4;  // x, y, size, color
+        public const int OpCircle = 5;   // x, y, radius, color, lineWidth (0 = filled)
         public const int OpEffects = 6;  // (no args) draw the particle/floating-text layer here
 
         // Ints per entry in Events: type (GameEventType), x, y, label (string index or -1), color (string index or -1)

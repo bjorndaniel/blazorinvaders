@@ -13,6 +13,7 @@ public class SceneBuilderTests
         [Scene.OpRect] = 5,
         [Scene.OpText] = 6,
         [Scene.OpDiamond] = 4,
+        [Scene.OpCircle] = 5,
         [Scene.OpEffects] = 0,
     };
 
@@ -74,6 +75,7 @@ public class SceneBuilderTests
                 Scene.OpRect => new[] { args[4] },
                 Scene.OpText => new[] { args[0], args[3], args[4] },
                 Scene.OpDiamond => new[] { args[3] },
+                Scene.OpCircle => new[] { args[3] },
                 _ => Array.Empty<int>(),
             };
             Assert.All(refs, r => Assert.InRange(r, 0, scene.Strings.Length - 1));
@@ -156,6 +158,37 @@ public class SceneBuilderTests
         Assert.DoesNotContain(Texts(builder.Build(engine, 0)), t => t.StartsWith("COMBO"));
         engine.ComboTracker.Count = 10;
         Assert.Contains("COMBO x3", Texts(builder.Build(engine, 0)));
+    }
+
+    [Fact]
+    public void Hud_ListsActivePowerUps_AndShieldRing()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        engine.SpawnPowerUp(PowerUpType.RapidFire, engine.Player!.CurrentPosition);
+        engine.SpawnPowerUp(PowerUpType.Shield, engine.Player.CurrentPosition);
+        RunMs(engine, 40);
+
+        var scene = new SceneBuilder().Build(engine, 40);
+
+        var texts = Texts(scene);
+        Assert.Contains("RAPID 10", texts);
+        Assert.Contains("SHIELD", texts);
+        Assert.Single(Decode(scene), c => c.op == Scene.OpCircle);
+    }
+
+    [Fact]
+    public void FallingPowerUp_IsDrawnInItsColourWithLetter()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        engine.SpawnPowerUp(PowerUpType.Piercing, new System.Drawing.Point(100, 200));
+
+        var scene = new SceneBuilder().Build(engine, 0);
+
+        var diamond = Assert.Single(Decode(scene), c => c.op == Scene.OpDiamond);
+        Assert.Equal("#FF40FF", scene.Strings[diamond.args[3]]);
+        Assert.Contains("P", Texts(scene));
     }
 
     private static void RunMs(GameEngine engine, int ms)

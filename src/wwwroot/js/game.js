@@ -5,9 +5,10 @@
 import * as effects from './effects.js';
 
 // Must match Scene.cs
-const OP_SPRITE = 1, OP_RECT = 2, OP_TEXT = 3, OP_DIAMOND = 4, OP_EFFECTS = 6;
+const OP_SPRITE = 1, OP_RECT = 2, OP_TEXT = 3, OP_DIAMOND = 4, OP_CIRCLE = 5, OP_EFFECTS = 6;
 // Must match SoundEffect in Enumerations.cs
-const SOUND_SHOOT = 1, SOUND_ALIEN_DEATH = 2, SOUND_PLAYER_DEATH = 4, SOUND_MOTHERSHIP = 8, SOUND_STOP_MARCH = 16;
+const SOUND_SHOOT = 1, SOUND_ALIEN_DEATH = 2, SOUND_PLAYER_DEATH = 4, SOUND_MOTHERSHIP = 8, SOUND_STOP_MARCH = 16,
+    SOUND_POWER_UP = 32, SOUND_SHIELD_BLOCK = 64;
 // Held controls must match GameInput in Enumerations.cs; one-shot presses must match Index.razor
 const INPUT_LEFT = 1, INPUT_RIGHT = 2, INPUT_FIRE = 4, INPUT_START = 8, INPUT_PAUSE = 16;
 const HELD_KEYS = { ArrowLeft: INPUT_LEFT, ArrowRight: INPUT_RIGHT, Space: INPUT_FIRE };
@@ -178,6 +179,21 @@ function draw(scene) {
                 i += 5;
                 break;
             }
+            case OP_CIRCLE: {
+                const lineWidth = cmds[i + 5];
+                ctx.beginPath();
+                ctx.arc(cmds[i + 1], cmds[i + 2], cmds[i + 3], 0, Math.PI * 2);
+                if (lineWidth > 0) {
+                    ctx.lineWidth = lineWidth;
+                    ctx.strokeStyle = strings[cmds[i + 4]];
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = strings[cmds[i + 4]];
+                    ctx.fill();
+                }
+                i += 6;
+                break;
+            }
             case OP_EFFECTS:
                 effects.draw(ctx);
                 i += 1;
@@ -228,6 +244,8 @@ function playSounds({ sounds, march }) {
     if (sounds & SOUND_ALIEN_DEATH) audio.alienDeath();
     if (sounds & SOUND_PLAYER_DEATH) audio.playerDeath();
     if (sounds & SOUND_MOTHERSHIP) audio.mothership();
+    if (sounds & SOUND_POWER_UP) audio.powerUp();
+    if (sounds & SOUND_SHIELD_BLOCK) audio.shieldBlock();
 }
 
 const audio = (() => {
@@ -276,6 +294,11 @@ const audio = (() => {
                 setTimeout(() => playTone(freq, 0.18, 'sawtooth', 0.35), i * 140));
         },
         mothership() { playTone(100 + Math.random() * 60, 0.09, 'sine', 0.12); },
+        powerUp() {
+            [523, 659, 784, 1047].forEach((freq, i) =>
+                setTimeout(() => playTone(freq, 0.08, 'square', 0.12), i * 60));
+        },
+        shieldBlock() { playTone(220, 0.2, 'triangle', 0.3); },
         march(alienCount) {
             if (marchInterval) clearInterval(marchInterval);
             const interval = Math.max(80, 480 - (55 - Math.max(0, alienCount)) * 8);

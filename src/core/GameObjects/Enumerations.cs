@@ -38,6 +38,17 @@
         MotherShipKilled = 3,
         BunkerHit        = 4,
         ComboUp          = 5,
+        PowerUpCollected = 6,
+        ShieldBlocked    = 7,
+    }
+
+    public enum PowerUpType
+    {
+        DoubleShot,
+        RapidFire,
+        Shield,
+        Piercing,
+        ExtraLife,
     }
 
     [Flags]
@@ -49,5 +60,7 @@
         PlayerDeath = 4,
         MotherShip  = 8,
         StopMarch   = 16,
+        PowerUp     = 32,
+        ShieldBlock = 64,
     }
 }

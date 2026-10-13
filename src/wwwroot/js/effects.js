@@ -4,7 +4,7 @@
 
 // Must match GameEventType in Enumerations.cs
 const EVENT_ALIEN_KILLED = 1, EVENT_PLAYER_HIT = 2, EVENT_MOTHERSHIP_KILLED = 3, EVENT_BUNKER_HIT = 4,
-    EVENT_COMBO_UP = 5;
+    EVENT_COMBO_UP = 5, EVENT_POWER_UP = 6, EVENT_SHIELD_BLOCKED = 7;
 // Must match Scene.EventStride
 const EVENT_STRIDE = 5;
 
@@ -62,6 +62,14 @@ export function update(now, { events, strings, paused }) {
             case EVENT_COMBO_UP:
                 burst(x, y - 20, color, 16, 120);
                 if (label) addLabel(label, x, y - 30, color, '20px Orbitron');
+                break;
+            case EVENT_POWER_UP:
+                burst(x, y, color, 16, 140);
+                if (label) addLabel(label, x, y - 30, color, '16px Orbitron');
+                break;
+            case EVENT_SHIELD_BLOCKED:
+                burst(x, y - 10, color, 20, 200);
+                startShake(3, 150);
                 break;
         }
     }
