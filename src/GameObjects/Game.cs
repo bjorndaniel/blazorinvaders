@@ -230,6 +230,11 @@ namespace BlazorInvaders.GameObjects
             UpdatePowerUps();
             UpdateMotherShip();
 
+            // Drop spent entities so the lists don't grow for the whole game
+            _shots.RemoveAll(s => s.Remove);
+            _bombs.RemoveAll(b => b.Remove);
+            _powerUps.RemoveAll(p => p.Collected);
+
             if (_aliens.All(_ => _.Destroyed))
             {
                 // Perfect wave bonus
@@ -380,6 +385,7 @@ namespace BlazorInvaders.GameObjects
             foreach (var s in _shots.Where(_ => !_.Remove))
             {
                 s.Move();
+                if (s.CurrentPosition.Y <= 0) { s.Remove = true; continue; }
 
                 foreach (var bunker in _bunkers.Where(b => !b.Destroyed))
                 {
@@ -506,6 +512,7 @@ namespace BlazorInvaders.GameObjects
             foreach (var b in _bombs.Where(_ => !_.Remove))
             {
                 b.Move();
+                if (b.CurrentPosition.Y >= _height) { b.Remove = true; continue; }
 
                 foreach (var bunker in _bunkers.Where(bu => !bu.Destroyed))
                 {
@@ -729,7 +736,6 @@ namespace BlazorInvaders.GameObjects
 
             foreach (var s in _shots.Where(_ => !_.Remove))
             {
-                if (s.CurrentPosition.Y <= 0) { s.Remove = true; continue; }
                 await _context.DrawImageAsync(_spriteSheet,
                     s.Sprite.TopLeft.X, s.Sprite.TopLeft.Y, s.Sprite.Size.Width, s.Sprite.Size.Height,
                     s.CurrentPosition.X, s.CurrentPosition.Y, s.Sprite.RenderSize.Width, s.Sprite.RenderSize.Height);
@@ -737,7 +743,6 @@ namespace BlazorInvaders.GameObjects
 
             foreach (var b in _bombs.Where(_ => !_.Remove))
             {
-                if (b.CurrentPosition.Y >= _height) { b.Remove = true; continue; }
                 await _context.DrawImageAsync(_spriteSheet,
                     b.Sprite.TopLeft.X, b.Sprite.TopLeft.Y, b.Sprite.Size.Width, b.Sprite.Size.Height,
                     b.CurrentPosition.X, b.CurrentPosition.Y, b.Sprite.RenderSize.Width, b.Sprite.RenderSize.Height);
