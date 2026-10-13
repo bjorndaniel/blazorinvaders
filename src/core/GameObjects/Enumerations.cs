@@ -30,6 +30,15 @@
         Fire  = 4,
     }
 
+    /// <summary>Things that happened during a step, for cosmetic effects. Values must match game.js.</summary>
+    public enum GameEventType
+    {
+        AlienKilled      = 1,
+        PlayerHit        = 2,
+        MotherShipKilled = 3,
+        BunkerHit        = 4,
+    }
+
     [Flags]
     public enum SoundEffect
     {

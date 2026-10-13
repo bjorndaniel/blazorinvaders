@@ -10,6 +10,7 @@ namespace BlazorInvaders.Rendering
     {
         private const string White = "white";
         private const string Gold = "#FFD700";
+        private const string MotherShipRed = "#ff4040";
 
         // Row tint colours, applied via pre-tinted copies of the sprite sheet in JS
         private static readonly string[] RowTints =
@@ -59,6 +60,9 @@ namespace BlazorInvaders.Rendering
             else
                 AttractScreen(engine, timeStamp);
 
+            // Particles sit above the playfield but below the banners and pause overlay
+            _cmds.Add(Scene.OpEffects);
+
             if (engine.ShowWaveBanner)
             {
                 Rect(0, h / 2 - 45, w, 65, "rgba(0,0,0,0.55)");
@@ -75,15 +79,54 @@ namespace BlazorInvaders.Rendering
                 CenteredText("Press P to resume", w, h / 2 + 40, 20, White);
             }
 
+            var events = EncodeEvents(engine.TakeEvents());
             var sounds = engine.TakeSounds(out var march);
             return new Scene
             {
                 Cmds = _cmds.ToArray(),
                 Strings = _strings.ToArray(),
+                Events = events,
+                Paused = engine.Paused,
                 Sounds = (int)sounds,
                 March = march,
             };
         }
+
+        private int[] EncodeEvents(GameEvent[] events)
+        {
+            if (events.Length == 0)
+                return [];
+
+            var encoded = new int[events.Length * Scene.EventStride];
+            for (int i = 0; i < events.Length; i++)
+            {
+                var e = events[i];
+                var (label, color) = e.Type switch
+                {
+                    GameEventType.AlienKilled => ($"+{e.Value}", RowTints[e.Variant < RowTints.Length ? e.Variant : 0]),
+                    GameEventType.MotherShipKilled => ($"+{e.Value}", MotherShipRed),
+                    GameEventType.PlayerHit => (null, White),
+                    GameEventType.BunkerHit => (null, BunkerColor(e.Variant)),
+                    _ => ((string?)null, (string?)null),
+                };
+
+                var o = i * Scene.EventStride;
+                encoded[o] = (int)e.Type;
+                encoded[o + 1] = e.X;
+                encoded[o + 2] = e.Y;
+                encoded[o + 3] = label == null ? -1 : Str(label);
+                encoded[o + 4] = color == null ? -1 : Str(color);
+            }
+            return encoded;
+        }
+
+        private static string BunkerColor(int health) => health switch
+        {
+            4 => "rgba(0,230,0,1.0)",
+            3 => "rgba(0,200,0,0.85)",
+            2 => "rgba(180,200,0,0.7)",
+            _ => "rgba(200,80,0,0.6)"
+        };
 
         private void GameFrame(GameEngine engine)
         {
@@ -92,13 +135,7 @@ namespace BlazorInvaders.Rendering
 
             foreach (var bunker in engine.Bunkers.Where(b => !b.Destroyed))
             {
-                var color = bunker.Health switch
-                {
-                    4 => "rgba(0,230,0,1.0)",
-                    3 => "rgba(0,200,0,0.85)",
-                    2 => "rgba(180,200,0,0.7)",
-                    _ => "rgba(200,80,0,0.6)"
-                };
+                var color = BunkerColor(bunker.Health);
                 var (x, y) = (bunker.Position.X, bunker.Position.Y);
                 var (bw, bh) = (Bunker.Size.Width, Bunker.Size.Height);
                 Rect(x + 10, y, bw - 20, bh - 8, color);
@@ -121,12 +158,9 @@ namespace BlazorInvaders.Rendering
             foreach (var b in engine.Bombs)
                 Sprite(b.Sprite, b.CurrentPosition.X, b.CurrentPosition.Y);
 
+            // Its score floats up from the MotherShipKilled event
             if (engine.MotherShip is { } ship)
-            {
                 Sprite(ship.Sprite, ship.CurrentPosition.X, ship.CurrentPosition.Y);
-                if (ship.HasBeenHit)
-                    Text($"+{ship.Score}", ship.CurrentPosition.X, ship.CurrentPosition.Y - 5, 14, Gold);
-            }
 
             foreach (var p in engine.PowerUps)
                 Diamond(p.Position.X, p.Position.Y, PowerUp.Size.Width, Gold);

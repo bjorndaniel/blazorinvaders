@@ -202,6 +202,34 @@ public class GameEngineTests
     }
 
     [Fact]
+    public void ShotKillingAlien_RaisesAlienKilledEvent()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        var shotX = engine.Player!.CurrentPosition.X + 13;
+
+        engine.Fire();
+        Run(engine, 0, 500);
+
+        var kill = Assert.Single(engine.TakeEvents(), e => e.Type == GameEventType.AlienKilled);
+        Assert.Equal(10, kill.Value);
+        Assert.Equal(4, kill.Variant);                  // bottom row
+        Assert.InRange(kill.X, shotX - 40, shotX + 40); // the alien above the ship
+        Assert.Empty(engine.TakeEvents());
+    }
+
+    [Fact]
+    public void LosingTheGame_RaisesPlayerHitEvent()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+
+        RunUntilGameOver(engine);
+
+        Assert.Contains(engine.TakeEvents(), e => e.Type == GameEventType.PlayerHit);
+    }
+
+    [Fact]
     public void SpentShots_ArePruned()
     {
         var engine = NewEngine();

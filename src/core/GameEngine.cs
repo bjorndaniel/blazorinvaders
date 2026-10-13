@@ -57,6 +57,7 @@ namespace BlazorInvaders.GameObjects
 
         private SoundEffect _sounds;
         private int _marchCount = -1;
+        private readonly List<GameEvent> _events = new();
 
         public GameEngine(int width, int height, Random? random = null)
         {
@@ -137,6 +138,7 @@ namespace BlazorInvaders.GameObjects
             _livesAtWaveStart = 3;
             _lastAliveCount = 55;
             _marchCount = _lastAliveCount;
+            _events.Clear();
         }
 
         public void TogglePause() => Paused = !Paused;
@@ -170,6 +172,19 @@ namespace BlazorInvaders.GameObjects
             _marchCount = -1;
             return sounds;
         }
+
+        /// <summary>Returns the events raised since the last call and clears them.</summary>
+        public GameEvent[] TakeEvents()
+        {
+            if (_events.Count == 0)
+                return Array.Empty<GameEvent>();
+            var events = _events.ToArray();
+            _events.Clear();
+            return events;
+        }
+
+        private void Raise(GameEventType type, Point position, Size size, int value = 0, int variant = 0) =>
+            _events.Add(new GameEvent(type, position.X + size.Width / 2, position.Y + size.Height / 2, value, variant));
 
         public void Update(float timeStamp)
         {
@@ -299,6 +314,7 @@ namespace BlazorInvaders.GameObjects
                     {
                         bunker.Hit();
                         s.Remove = true;
+                        Raise(GameEventType.BunkerHit, s.CurrentPosition, s.Sprite.RenderSize, variant: bunker.Health);
                         break;
                     }
                 }
@@ -313,8 +329,10 @@ namespace BlazorInvaders.GameObjects
                 {
                     s.Remove = true;
                     hit.HitTime = _gameTime.TotalTime;
-                    _points += GetAlienPoints(hit.Row);
+                    var points = GetAlienPoints(hit.Row);
+                    _points += points;
                     _sounds |= SoundEffect.AlienDeath;
+                    Raise(GameEventType.AlienKilled, hit.CurrentPosition, hit.Sprite.RenderSize, points, hit.Row);
 
                     if (_random.Next(100) < 5)
                         _powerUps.Add(new PowerUp(hit.CurrentPosition));
@@ -333,6 +351,7 @@ namespace BlazorInvaders.GameObjects
                     _points += _motherShip.Score;
                     s.Remove = true;
                     _sounds |= SoundEffect.AlienDeath;
+                    Raise(GameEventType.MotherShipKilled, _motherShip.CurrentPosition, _motherShip.Sprite.RenderSize, _motherShip.Score);
                 }
             }
         }
@@ -369,6 +388,7 @@ namespace BlazorInvaders.GameObjects
             if (_player != null && (_aliens.Any(_ => !_.Destroyed && _player.Collision(_)) ||
                     _aliens.Any(_ => !_.Destroyed && _.CurrentPosition.Y > 450)))
             {
+                Raise(GameEventType.PlayerHit, _player.CurrentPosition, _player.Sprite.RenderSize);
                 _lives = 0;
                 EndGame();
             }
@@ -419,6 +439,7 @@ namespace BlazorInvaders.GameObjects
                     {
                         bunker.Hit();
                         b.Remove = true;
+                        Raise(GameEventType.BunkerHit, b.CurrentPosition, b.Sprite.RenderSize, variant: bunker.Health);
                         break;
                     }
                 }
@@ -431,6 +452,7 @@ namespace BlazorInvaders.GameObjects
                     b.Remove = true;
                     _removeLifeBanner = _gameTime.TotalTime;
                     _sounds |= SoundEffect.PlayerDeath;
+                    Raise(GameEventType.PlayerHit, _player.CurrentPosition, _player.Sprite.RenderSize);
                     if (_lives < 1)
                         EndGame();
                 }

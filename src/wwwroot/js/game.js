@@ -2,8 +2,10 @@
 // Loaded as an ES module from Pages/Index.razor. Each frame asks .NET for a Scene
 // (see core/Rendering/Scene.cs) and executes its draw commands.
 
+import * as effects from './effects.js';
+
 // Must match Scene.cs
-const OP_SPRITE = 1, OP_RECT = 2, OP_TEXT = 3, OP_DIAMOND = 4;
+const OP_SPRITE = 1, OP_RECT = 2, OP_TEXT = 3, OP_DIAMOND = 4, OP_EFFECTS = 6;
 // Must match SoundEffect in Enumerations.cs
 const SOUND_SHOOT = 1, SOUND_ALIEN_DEATH = 2, SOUND_PLAYER_DEATH = 4, SOUND_MOTHERSHIP = 8, SOUND_STOP_MARCH = 16;
 // Held controls must match GameInput in Enumerations.cs; one-shot presses must match Index.razor
@@ -50,6 +52,7 @@ export async function start(dotnetRef, canvas, container, width, height) {
     sheet = image;
     starLayer = createStarLayer(width, height);
     tintedSheets.clear();
+    effects.reset();
     loopId = requestAnimationFrame(frame);
 }
 
@@ -130,9 +133,13 @@ function releaseAll() {
     pressed = 0;
 }
 
-function draw({ cmds, strings }) {
+function draw(scene) {
+    const { cmds, strings } = scene;
+    effects.update(performance.now(), scene);
+
     const { width, height } = ctx.canvas;
     ctx.clearRect(0, 0, width, height);
+    effects.beginFrame(ctx);
     ctx.drawImage(starLayer, 0, 0);
 
     for (let i = 0; i < cmds.length;) {
@@ -171,10 +178,15 @@ function draw({ cmds, strings }) {
                 i += 5;
                 break;
             }
+            case OP_EFFECTS:
+                effects.draw(ctx);
+                i += 1;
+                break;
             default:
                 throw new Error(`Unknown draw op ${cmds[i]} at ${i}`);
         }
     }
+    effects.endFrame(ctx);
 }
 
 // Tinting the whole sheet once per colour replaces per-sprite compositing every frame

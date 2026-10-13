@@ -13,6 +13,7 @@ public class SceneBuilderTests
         [Scene.OpRect] = 5,
         [Scene.OpText] = 6,
         [Scene.OpDiamond] = 4,
+        [Scene.OpEffects] = 0,
     };
 
     private static GameEngine NewEngine() => new(870, 500, new Random(42));
@@ -89,6 +90,66 @@ public class SceneBuilderTests
         var scene = new SceneBuilder().Build(engine, 0);
 
         Assert.Contains("PAUSED", Texts(scene));
+    }
+
+    [Fact]
+    public void Scene_MarksEffectsLayerOnce()
+    {
+        var engine = NewEngine();
+        var builder = new SceneBuilder();
+
+        Assert.Single(Decode(builder.Build(engine, 0)), c => c.op == Scene.OpEffects);
+        engine.Start(0);
+        Assert.Single(Decode(builder.Build(engine, 0)), c => c.op == Scene.OpEffects);
+    }
+
+    [Fact]
+    public void AlienKill_IsEncodedWithScoreLabelAndRowColour()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        engine.Fire();
+        RunMs(engine, 500);
+
+        var scene = new SceneBuilder().Build(engine, 500);
+
+        Assert.Equal(0, scene.Events.Length % Scene.EventStride);
+        var kill = Enumerable.Range(0, scene.Events.Length / Scene.EventStride)
+            .Select(i => scene.Events[(i * Scene.EventStride)..((i + 1) * Scene.EventStride)])
+            .Single(e => e[0] == (int)GameEventType.AlienKilled);
+        Assert.Equal("+10", scene.Strings[kill[3]]);
+        Assert.Equal("#78ff3c", scene.Strings[kill[4]]);   // bottom row tint
+    }
+
+    [Fact]
+    public void Events_AreSentOnlyOnce()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        engine.Fire();
+        RunMs(engine, 500);
+        var builder = new SceneBuilder();
+
+        Assert.NotEmpty(builder.Build(engine, 500).Events);
+        Assert.Empty(builder.Build(engine, 500).Events);
+    }
+
+    [Fact]
+    public void Scene_ReportsPaused()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        var builder = new SceneBuilder();
+
+        Assert.False(builder.Build(engine, 0).Paused);
+        engine.TogglePause();
+        Assert.True(builder.Build(engine, 0).Paused);
+    }
+
+    private static void RunMs(GameEngine engine, int ms)
+    {
+        for (var t = GameEngine.StepMs; t <= ms; t += GameEngine.StepMs)
+            engine.Update(t);
     }
 
     [Fact]
