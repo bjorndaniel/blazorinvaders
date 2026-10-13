@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Globalization;
 using System.Text.Json;
 using Blazor.Extensions;
 using Blazor.Extensions.Canvas.Canvas2D;
@@ -15,7 +16,7 @@ namespace BlazorInvaders.GameObjects
         private List<Bomb> _bombs = new();
         private List<Bunker> _bunkers = new();
         private List<PowerUp> _powerUps = new();
-        private readonly List<(float x, float y, float brightness, int size)> _stars = new();
+        private readonly List<(float x, float y, string fill, int size)> _stars = new();
 
         // Simulation runs in fixed 60 Hz steps regardless of display refresh rate
         private const float StepMs = 1000f / 60f;
@@ -97,10 +98,12 @@ namespace BlazorInvaders.GameObjects
         {
             for (int i = 0; i < 80; i++)
             {
+                var brightness = 0.3 + _random.NextDouble() * 0.7;
                 _stars.Add((
                     x: (float)(_random.NextDouble() * _width),
                     y: (float)(_random.NextDouble() * _height),
-                    brightness: (float)(0.3 + _random.NextDouble() * 0.7),
+                    // CSS needs '.' decimals whatever the browser culture is
+                    fill: string.Create(CultureInfo.InvariantCulture, $"rgba(255,255,255,{brightness:F2})"),
                     size: _random.Next(1, 3)
                 ));
             }
@@ -551,11 +554,20 @@ namespace BlazorInvaders.GameObjects
 
         private async Task RenderStars()
         {
-            foreach (var (x, y, brightness, size) in _stars)
+            foreach (var (x, y, fill, size) in _stars)
             {
-                await _context!.SetFillStyleAsync($"rgba(255,255,255,{brightness:F2})");
+                await _context!.SetFillStyleAsync(fill);
                 await _context.FillRectAsync(x, y, size, size);
             }
+        }
+
+        // textAlign is batched with the font, unlike MeasureTextAsync which runs
+        // immediately and would measure with the previous frame's font
+        private async Task FillCenteredTextAsync(string text, double y)
+        {
+            await _context!.SetTextAlignAsync(TextAlign.Center);
+            await _context.FillTextAsync(text, _width / 2, y);
+            await _context.SetTextAlignAsync(TextAlign.Left);
         }
 
         private async Task RenderAttractScreen(float timeStamp)
@@ -591,8 +603,7 @@ namespace BlazorInvaders.GameObjects
             await _context.SetFontAsync("22px Orbitron");
             await _context.SetFillStyleAsync("#FFD700");
             var title = "SCORE ADVANCE TABLE";
-            var tl = await _context.MeasureTextAsync(title);
-            await _context.FillTextAsync(title, _width / 2 - (tl.Width / 2), 120);
+            await FillCenteredTextAsync(title, 120);
 
             var rows = new[]
             {
@@ -623,8 +634,7 @@ namespace BlazorInvaders.GameObjects
             await _context.SetFontAsync("26px Orbitron");
             await _context.SetFillStyleAsync("#FFD700");
             var title = "TOP SCORES";
-            var tl = await _context.MeasureTextAsync(title);
-            await _context.FillTextAsync(title, _width / 2 - (tl.Width / 2), 130);
+            await FillCenteredTextAsync(title, 130);
 
             await _context.SetFontAsync("22px Orbitron");
             await _context.SetFillStyleAsync("white");
@@ -632,8 +642,7 @@ namespace BlazorInvaders.GameObjects
             if (_topScores.Count == 0)
             {
                 var none = "NO SCORES YET";
-                var nl = await _context.MeasureTextAsync(none);
-                await _context.FillTextAsync(none, _width / 2 - (nl.Width / 2), 200);
+                await FillCenteredTextAsync(none, 200);
             }
             else
             {
@@ -641,8 +650,7 @@ namespace BlazorInvaders.GameObjects
                 for (int i = 0; i < Math.Min(_topScores.Count, 3); i++)
                 {
                     var line = $"{i + 1}.  {_topScores[i].Name,-5} {_topScores[i].Score:D5}";
-                    var ll = await _context.MeasureTextAsync(line);
-                    await _context.FillTextAsync(line, _width / 2 - (ll.Width / 2), y);
+                    await FillCenteredTextAsync(line, y);
                     y += 45;
                 }
             }
@@ -654,16 +662,13 @@ namespace BlazorInvaders.GameObjects
             await _context.SetFontAsync("28px Orbitron");
             await _context.SetFillStyleAsync("white");
             var t = "Use arrow keys to move, space to fire";
-            var l = await _context.MeasureTextAsync(t);
-            await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 160);
+            await FillCenteredTextAsync(t, 160);
             t = "Press space to start";
-            l = await _context.MeasureTextAsync(t);
-            await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 220);
+            await FillCenteredTextAsync(t, 220);
             await _context.SetFillStyleAsync("#888");
             await _context.SetFontAsync("18px Orbitron");
             t = "P / Escape to pause";
-            l = await _context.MeasureTextAsync(t);
-            await _context.FillTextAsync(t, _width / 2 - (l.Width / 2), 265);
+            await FillCenteredTextAsync(t, 265);
         }
 
         private async Task RenderGameOver()
@@ -681,12 +686,10 @@ namespace BlazorInvaders.GameObjects
 
             await _context.SetFontAsync("36px Orbitron");
             var text = "GAME OVER";
-            var length = await _context.MeasureTextAsync(text);
-            await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 - 30);
+            await FillCenteredTextAsync(text, _height / 2 - 30);
             await _context.SetFontAsync("22px Orbitron");
             text = "Press space to start a new game";
-            length = await _context.MeasureTextAsync(text);
-            await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 + 20);
+            await FillCenteredTextAsync(text, _height / 2 + 20);
         }
 
         private async Task RenderGameFrame(float timeStamp)
@@ -700,8 +703,7 @@ namespace BlazorInvaders.GameObjects
                 await _context.SetFillStyleAsync("red");
                 await _context.SetFontAsync("20px Orbitron");
                 var msg = "You were hit!";
-                var ml = await _context.MeasureTextAsync(msg);
-                await _context.FillTextAsync(msg, _width / 2 - (ml.Width / 2), 55);
+                await FillCenteredTextAsync(msg, 55);
                 await _context.SetFillStyleAsync("white");
             }
 
@@ -825,8 +827,7 @@ namespace BlazorInvaders.GameObjects
             await _context.SetFillStyleAsync("#00FF88");
             await _context.SetFontAsync("40px Orbitron");
             var text = $"WAVE {_wave}";
-            var length = await _context.MeasureTextAsync(text);
-            await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 + 5);
+            await FillCenteredTextAsync(text, _height / 2 + 5);
         }
 
         private async Task RenderPerfectBonus()
@@ -835,8 +836,7 @@ namespace BlazorInvaders.GameObjects
             await _context.SetFillStyleAsync("#FFD700");
             await _context.SetFontAsync("28px Orbitron");
             var text = "PERFECT!  +500";
-            var length = await _context.MeasureTextAsync(text);
-            await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), 80);
+            await FillCenteredTextAsync(text, 80);
         }
 
         private async Task RenderPauseOverlay()
@@ -847,12 +847,10 @@ namespace BlazorInvaders.GameObjects
             await _context.SetFillStyleAsync("white");
             await _context.SetFontAsync("48px Orbitron");
             var text = "PAUSED";
-            var length = await _context.MeasureTextAsync(text);
-            await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 - 10);
+            await FillCenteredTextAsync(text, _height / 2 - 10);
             await _context.SetFontAsync("20px Orbitron");
             text = "Press P to resume";
-            length = await _context.MeasureTextAsync(text);
-            await _context.FillTextAsync(text, _width / 2 - (length.Width / 2), _height / 2 + 40);
+            await FillCenteredTextAsync(text, _height / 2 + 40);
         }
     }
 }
