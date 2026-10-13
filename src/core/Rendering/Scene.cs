@@ -1,0 +1,25 @@
+namespace BlazorInvaders.Rendering
+{
+    /// <summary>
+    /// One frame of drawing instructions for the JS canvas renderer (wwwroot/js/game.js).
+    /// <see cref="Cmds"/> is a flat stream of op codes and integer arguments; text, colours
+    /// and fonts are indexes into <see cref="Strings"/>.
+    /// </summary>
+    public sealed class Scene
+    {
+        // Op codes and arity must match game.js
+        public const int OpSprite = 1;   // sx, sy, sw, sh, dx, dy, dw, dh, tint (string index or -1)
+        public const int OpRect = 2;     // x, y, w, h, color
+        public const int OpText = 3;     // text, x, y, font, color, centered (0/1)
+        public const int OpDiamond = 4;  // x, y, size, color
+
+        public required int[] Cmds { get; init; }
+        public required string[] Strings { get; init; }
+
+        /// <summary><see cref="GameObjects.SoundEffect"/> flags to play this frame.</summary>
+        public int Sounds { get; init; }
+
+        /// <summary>New alien count for the march tempo, or -1 if unchanged.</summary>
+        public int March { get; init; } = -1;
+    }
+}

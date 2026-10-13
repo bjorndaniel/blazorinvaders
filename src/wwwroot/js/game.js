@@ -1,4 +1,171 @@
-window.gameAudio = (() => {
+// Canvas renderer, frame loop, audio and storage for the game page.
+// Loaded as an ES module from Pages/Index.razor. Each frame asks .NET for a Scene
+// (see core/Rendering/Scene.cs) and executes its draw commands.
+
+// Must match Scene.cs
+const OP_SPRITE = 1, OP_RECT = 2, OP_TEXT = 3, OP_DIAMOND = 4;
+// Must match SoundEffect in Enumerations.cs
+const SOUND_SHOOT = 1, SOUND_ALIEN_DEATH = 2, SOUND_PLAYER_DEATH = 4, SOUND_MOTHERSHIP = 8, SOUND_STOP_MARCH = 16;
+
+const SPRITE_SHEET_URL = 'assets/sprites_cleaned.png';
+const TINT_ALPHA = 0.65;
+
+let session = 0;
+let loopId = 0;
+let frameBusy = false;
+let dotnet = null;
+let ctx = null;
+let sheet = null;
+let starLayer = null;
+const tintedSheets = new Map();
+
+export async function start(dotnetRef, canvas, width, height) {
+    stop();
+    const current = session;
+
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+
+    const image = new Image();
+    image.src = SPRITE_SHEET_URL;
+    // Make sure Orbitron is ready before the first text draw
+    await Promise.all([image.decode(), document.fonts.load('16px Orbitron')]);
+
+    // stop() may have been called (page left) while we were loading
+    if (current !== session) return;
+
+    dotnet = dotnetRef;
+    ctx = context;
+    sheet = image;
+    starLayer = createStarLayer(width, height);
+    tintedSheets.clear();
+    loopId = requestAnimationFrame(frame);
+}
+
+export function stop() {
+    session++;
+    if (loopId) cancelAnimationFrame(loopId);
+    loopId = 0;
+    frameBusy = false;
+    dotnet = null;
+    ctx = null;
+    audio.stopMarch();
+}
+
+export function getItem(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+}
+
+export function setItem(key, value) {
+    try { localStorage.setItem(key, value); } catch { /* storage unavailable */ }
+}
+
+function frame(timeStamp) {
+    loopId = requestAnimationFrame(frame);
+    // Skip this frame if .NET is still working on the previous one
+    if (frameBusy || !dotnet) return;
+    frameBusy = true;
+    const current = session;
+    dotnet.invokeMethodAsync('Tick', timeStamp)
+        .then(scene => {
+            if (current !== session) return;
+            draw(scene);
+            playSounds(scene);
+        })
+        .catch(e => console.error(e))
+        .finally(() => { if (current === session) frameBusy = false; });
+}
+
+function draw({ cmds, strings }) {
+    const { width, height } = ctx.canvas;
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(starLayer, 0, 0);
+
+    for (let i = 0; i < cmds.length;) {
+        switch (cmds[i]) {
+            case OP_SPRITE: {
+                const tint = cmds[i + 9];
+                const source = tint < 0 ? sheet : tintedSheet(strings[tint]);
+                ctx.drawImage(source,
+                    cmds[i + 1], cmds[i + 2], cmds[i + 3], cmds[i + 4],
+                    cmds[i + 5], cmds[i + 6], cmds[i + 7], cmds[i + 8]);
+                i += 10;
+                break;
+            }
+            case OP_RECT:
+                ctx.fillStyle = strings[cmds[i + 5]];
+                ctx.fillRect(cmds[i + 1], cmds[i + 2], cmds[i + 3], cmds[i + 4]);
+                i += 6;
+                break;
+            case OP_TEXT:
+                ctx.font = strings[cmds[i + 4]];
+                ctx.fillStyle = strings[cmds[i + 5]];
+                ctx.textAlign = cmds[i + 6] ? 'center' : 'left';
+                ctx.fillText(strings[cmds[i + 1]], cmds[i + 2], cmds[i + 3]);
+                i += 7;
+                break;
+            case OP_DIAMOND: {
+                const x = cmds[i + 1], y = cmds[i + 2], half = cmds[i + 3] / 2;
+                ctx.fillStyle = strings[cmds[i + 4]];
+                ctx.beginPath();
+                ctx.moveTo(x + half, y);
+                ctx.lineTo(x + half * 2, y + half);
+                ctx.lineTo(x + half, y + half * 2);
+                ctx.lineTo(x, y + half);
+                ctx.closePath();
+                ctx.fill();
+                i += 5;
+                break;
+            }
+            default:
+                throw new Error(`Unknown draw op ${cmds[i]} at ${i}`);
+        }
+    }
+}
+
+// Tinting the whole sheet once per colour replaces per-sprite compositing every frame
+function tintedSheet(color) {
+    let tinted = tintedSheets.get(color);
+    if (!tinted) {
+        tinted = document.createElement('canvas');
+        tinted.width = sheet.naturalWidth;
+        tinted.height = sheet.naturalHeight;
+        const c = tinted.getContext('2d');
+        c.drawImage(sheet, 0, 0);
+        c.globalCompositeOperation = 'source-atop';
+        c.globalAlpha = TINT_ALPHA;
+        c.fillStyle = color;
+        c.fillRect(0, 0, tinted.width, tinted.height);
+        tintedSheets.set(color, tinted);
+    }
+    return tinted;
+}
+
+function createStarLayer(width, height) {
+    const layer = document.createElement('canvas');
+    layer.width = width;
+    layer.height = height;
+    const c = layer.getContext('2d');
+    for (let i = 0; i < 80; i++) {
+        const size = 1 + Math.floor(Math.random() * 2);
+        c.fillStyle = `rgba(255,255,255,${(0.3 + Math.random() * 0.7).toFixed(2)})`;
+        c.fillRect(Math.random() * width, Math.random() * height, size, size);
+    }
+    return layer;
+}
+
+function playSounds({ sounds, march }) {
+    if (march >= 0) audio.march(march);
+    // After the march update so a final alien hit can't restart it on game over
+    if (sounds & SOUND_STOP_MARCH) audio.stopMarch();
+    if (sounds & SOUND_SHOOT) audio.shoot();
+    if (sounds & SOUND_ALIEN_DEATH) audio.alienDeath();
+    if (sounds & SOUND_PLAYER_DEATH) audio.playerDeath();
+    if (sounds & SOUND_MOTHERSHIP) audio.mothership();
+}
+
+const audio = (() => {
     let ctx = null;
     let marchInterval = null;
     let marchStep = 0;
@@ -58,27 +225,3 @@ window.gameAudio = (() => {
         }
     };
 })();
-
-window.localStorageInterop = {
-    get: (key) => localStorage.getItem(key),
-    set: (key, value) => localStorage.setItem(key, value)
-};
-
-window.canvasHelper = {
-    drawTintedAliens: function (spriteSheet, aliens) {
-        const canvas = document.querySelector('#canvasContainer canvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        for (const a of aliens) {
-            ctx.drawImage(spriteSheet, a.sx, a.sy, a.sw, a.sh, a.dx, a.dy, a.dw, a.dh);
-            if (a.tint) {
-                ctx.globalCompositeOperation = 'source-atop';
-                ctx.globalAlpha = 0.65;
-                ctx.fillStyle = a.tint;
-                ctx.fillRect(a.dx, a.dy, a.dw, a.dh);
-                ctx.globalAlpha = 1.0;
-                ctx.globalCompositeOperation = 'source-over';
-            }
-        }
-    }
-};

@@ -51,56 +51,6 @@
         <a class="dismiss">🗙</a>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
-    <script src="_content/Blazor.Extensions.Canvas/blazor.extensions.canvas.js"></script>
-    <script>
-        let loopId = 0;
-        let frameBusy = false;
-
-        function gameLoop(timeStamp) {
-            loopId = window.requestAnimationFrame(gameLoop);
-            // Skip this frame if .NET is still working on the previous one
-            if (frameBusy || !window.game) return;
-            frameBusy = true;
-            window.game.instance.invokeMethodAsync('GameLoop', timeStamp)
-                .catch(e => console.error(e))
-                .finally(() => frameBusy = false);
-        }
-
-        window.initGame = (instance, width, height) => {
-            window.stopGame();
-            const canvasContainer = document.getElementById('canvasContainer'),
-                canvases = canvasContainer.getElementsByTagName('canvas') || [];
-            canvasContainer.style.width = `${width}px`;
-            canvasContainer.style.height = `${height}px`;
-            window.game = {
-                instance: instance,
-                canvas: canvases.length ? canvases[0] : null
-            };
-            window.game.canvas.width = width;
-            window.game.canvas.height = height;
-            loopId = window.requestAnimationFrame(gameLoop);
-            canvasContainer.focus();
-        };
-
-        window.stopGame = () => {
-            if (loopId) window.cancelAnimationFrame(loopId);
-            loopId = 0;
-            frameBusy = false;
-            window.game = null;
-            if (window.gameAudio) window.gameAudio.stopMarch();
-        };
-
-        // Ensure Orbitron is loaded before the first canvas text draw
-        document.fonts.load('16px Orbitron');
-
-        window.startGame = () => {
-            window.requestAnimationFrame((t) => {
-                if (window.game) window.game.instance.invokeMethodAsync('StartGame', t);
-            });
-        };
-
-    </script>
-    <script src="js/game.js"></script>
 </body>
 
 </html>

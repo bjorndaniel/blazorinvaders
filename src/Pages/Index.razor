@@ -1,7 +1,6 @@
 @page "/"
-@using Blazor.Extensions
-@using Blazor.Extensions.Canvas.Canvas2D
 @using BlazorInvaders.GameObjects
+@using BlazorInvaders.Rendering
 @inject IJSRuntime JsRuntime;
 @inject IConfiguration Config
 @inject HttpClient Http
@@ -24,117 +23,158 @@
 </div>
 <div class="row justify-content-center">
     <div class="col text-center" id="canvas">
-        <div tabindex="0" @onkeydown="@(async (e) => { await KeyDown(e); })" @onkeydown:preventDefault class="game-canvas" id="canvasContainer">
-            <BECanvas @ref="_canvas"></BECanvas>
+        <div tabindex="0" @ref="_container" @onkeydown="KeyDown" @onkeydown:preventDefault class="game-canvas" id="canvasContainer"
+             style="width:@(Width)px; height:@(Height)px">
+            <canvas @ref="_canvas" width="@Width" height="@Height"></canvas>
         </div>
     </div>
 </div>
 
-<img @ref="_spriteSheet" hidden src="assets/sprites_cleaned.png" />
-
 @code{
-    BECanvasComponent _canvas = default!;
-    ElementReference _spriteSheet;
-    Game _game = default!;
+    const int Width = 870;
+    const int Height = 500;
+
+    readonly GameEngine _engine = new(Width, Height);
+    readonly SceneBuilder _scenes = new();
+    ElementReference _container;
+    ElementReference _canvas;
+    IJSObjectReference? _module;
     DotNetObjectReference<Index>? _dotNetRef;
     bool _disableKeyboard = false;
+    bool _startRequested = false;
+    bool _disposed = false;
     int _personalBest = 0;
     bool _prevGameOver = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-        {
-            var stored = await JsRuntime.InvokeAsync<string?>("localStorageInterop.get", "personalBest");
-            if (int.TryParse(stored, out var pb))
-                _personalBest = pb;
+        if (!firstRender) return;
 
-            _game = new Game(870, 500, Config, Http, JsRuntime);
-            await _game.Init(_canvas, _spriteSheet);
-            _dotNetRef = DotNetObjectReference.Create(this);
-            await JsRuntime.InvokeVoidAsync("initGame", _dotNetRef, 870, 500);
-            _game.NewHighScore += HighScoreHandler;
-            StateHasChanged();
-        }
+        _module = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/game.js");
+        if (_disposed) return;
+
+        var stored = await _module.InvokeAsync<string?>("getItem", "personalBest");
+        if (int.TryParse(stored, out var pb))
+            _personalBest = pb;
+
+        _engine.QualifiedForLeaderboard += OnQualifiedForLeaderboard;
+        _dotNetRef = DotNetObjectReference.Create(this);
+        await _module.InvokeVoidAsync("start", _dotNetRef, _canvas, Width, Height);
+        await _container.FocusAsync();
+        StateHasChanged();
+
+        // Fetched after the loop starts so a cold API doesn't hold up the game
+        await LoadLeaderboardAsync();
     }
 
     public async ValueTask DisposeAsync()
     {
-        // Stop the JS frame loop before releasing the .NET reference it calls into
-        await JsRuntime.InvokeVoidAsync("stopGame");
-        if (_game != null)
-            _game.NewHighScore -= HighScoreHandler;
+        _disposed = true;
+        if (_module != null)
+        {
+            // Stop the JS frame loop before releasing the .NET reference it calls into
+            await _module.InvokeVoidAsync("stop");
+            await _module.DisposeAsync();
+        }
         _dotNetRef?.Dispose();
     }
 
     [JSInvokable]
-    public async ValueTask GameLoop(float timeStamp)
+    public async ValueTask<Scene> Tick(float timeStamp)
     {
-        if (_game.Started)
-            _game.Update(timeStamp);
-        await _game.Render(timeStamp);
+        if (_startRequested)
+        {
+            _startRequested = false;
+            _engine.Start(timeStamp);
+        }
 
-        if (_game.GameOver && !_prevGameOver)
+        _engine.Update(timeStamp);
+        var scene = _scenes.Build(_engine, timeStamp);
+
+        if (_engine.GameOver && !_prevGameOver)
         {
             _prevGameOver = true;
-            if (_game.Points > _personalBest)
+            if (_engine.Points > _personalBest)
             {
-                _personalBest = _game.Points;
-                await JsRuntime.InvokeVoidAsync("localStorageInterop.set", "personalBest", _personalBest.ToString());
+                _personalBest = _engine.Points;
+                await _module!.InvokeVoidAsync("setItem", "personalBest", _personalBest.ToString());
             }
-            await InvokeAsync(StateHasChanged);
+            StateHasChanged();
         }
-        else if (!_game.GameOver)
+        else if (!_engine.GameOver)
         {
             _prevGameOver = false;
         }
+
+        return scene;
     }
 
-    [JSInvokable]
-    public async ValueTask StartGame(float timeStamp)
-    {
-        await _game.Start(timeStamp);
-    }
-
-    protected async ValueTask KeyDown(KeyboardEventArgs e)
+    void KeyDown(KeyboardEventArgs e)
     {
         if (_disableKeyboard) return;
 
         if (e.Code == "KeyP" || e.Code == "Escape")
         {
-            _game.TogglePause();
+            _engine.TogglePause();
             return;
         }
 
-        if (_game.Paused) return;
+        if (_engine.Paused) return;
 
         if (e.Code == "ArrowLeft")
-            _game.MovePlayer(Direction.Left);
+            _engine.MovePlayer(Direction.Left);
         if (e.Code == "ArrowRight")
-            _game.MovePlayer(Direction.Right);
+            _engine.MovePlayer(Direction.Right);
         if (e.Code == "Space")
         {
-            if (_game.Started)
-                _game.Fire();
+            if (_engine.Started)
+                _engine.Fire();
             else
-                await JsRuntime.InvokeAsync<object>("startGame");
+                _startRequested = true; // started on the next frame, with its timestamp
         }
     }
 
-    private async Task HighScoreHandler(object sender, EventArgs args)
+    private async Task LoadLeaderboardAsync()
+    {
+        try
+        {
+            var scores = await Http.GetFromJsonAsync<List<HighScore>>($"{Config["FunctionsApi"]}/getleaderboard");
+            if (scores != null)
+                _engine.SetLeaderboard(scores);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Leaderboard unavailable: {ex.Message}");
+        }
+    }
+
+    // Raised from inside Tick; the dialog runs on its own and reports its own failures
+    void OnQualifiedForLeaderboard() => _ = SubmitHighScoreAsync();
+
+    private async Task SubmitHighScoreAsync()
     {
         _disableKeyboard = true;
-        var title = _game.Points >= _game.HighScore ? "New High Score!" : "You made the leaderboard!";
-        var modal = Modal.Show<SetHighScore>(title);
-        var result = await modal.Result;
-        if (!result.Cancelled)
+        try
         {
-            var score = result.Data as HighScore;
-            score!.Score = _game.Points;
-            if (_game.Points >= _game.HighScore)
-                _game.HighScoreName = score.Name.ToUpper();
-            await Http.PostAsJsonAsync($"{Config["FunctionsApi"]}/savehighscore", score);
+            var title = _engine.Points >= _engine.HighScore ? "New High Score!" : "You made the leaderboard!";
+            var result = await Modal.Show<SetHighScore>(title).Result;
+            if (result.Cancelled || result.Data is not HighScore score)
+                return;
+
+            score.Score = _engine.Points;
+            if (_engine.Points >= _engine.HighScore)
+                _engine.HighScoreName = score.Name;
+            var response = await Http.PostAsJsonAsync($"{Config["FunctionsApi"]}/savehighscore", score);
+            if (!response.IsSuccessStatusCode)
+                Console.Error.WriteLine($"Saving high score failed: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
         }
-        _disableKeyboard = false;
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Saving high score failed: {ex.Message}");
+        }
+        finally
+        {
+            _disableKeyboard = false;
+        }
     }
 }

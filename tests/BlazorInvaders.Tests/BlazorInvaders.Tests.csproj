@@ -21,19 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Reference only the game logic source files to avoid WASM build complications -->
-    <Compile Include="..\..\src\GameObjects\Alien.cs" />
-    <Compile Include="..\..\src\GameObjects\Bomb.cs" />
-    <Compile Include="..\..\src\GameObjects\Bunker.cs" />
-    <Compile Include="..\..\src\GameObjects\PowerUp.cs" />
-    <Compile Include="..\..\src\GameObjects\Enumerations.cs" />
-    <Compile Include="..\..\src\GameObjects\GameTime.cs" />
-    <Compile Include="..\..\src\GameObjects\HighScore.cs" />
-    <Compile Include="..\..\src\GameObjects\MotherShip.cs" />
-    <Compile Include="..\..\src\GameObjects\Player.cs" />
-    <Compile Include="..\..\src\GameObjects\Shot.cs" />
-    <Compile Include="..\..\src\GameObjects\Sprite.cs" />
-    <!-- API validation is dependency-free, so it can be compiled in directly too -->
+    <ProjectReference Include="..\..\src\core\BlazorInvaders.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- API validation is dependency-free, so it is compiled in directly rather than referencing the Functions app -->
     <Compile Include="..\..\src\api\HighScoreValidator.cs" />
   </ItemGroup>
 

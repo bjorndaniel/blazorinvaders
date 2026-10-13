@@ -19,4 +19,15 @@
         Zigzag,
         Rolling,
     }
+
+    [Flags]
+    public enum SoundEffect
+    {
+        None        = 0,
+        Shoot       = 1,
+        AlienDeath  = 2,
+        PlayerDeath = 4,
+        MotherShip  = 8,
+        StopMarch   = 16,
+    }
 }
