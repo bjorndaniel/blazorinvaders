@@ -241,6 +241,38 @@ public class SceneBuilderTests
         Assert.Contains(expected, Texts(scene));
     }
 
+    [Fact]
+    public void DailyGame_ShowsChallengeBannerAndHudTag()
+    {
+        var engine = NewEngine();
+        engine.Start(0, daily: new DailyChallenge(new DateOnly(2026, 10, 13), DailyModifier.NoBunkers));
+
+        var texts = Texts(new SceneBuilder().Build(engine, 0));
+
+        Assert.Contains("DAILY CHALLENGE", texts);
+        Assert.Contains("2026-10-13  ·  NO BUNKERS", texts);
+        Assert.Contains("DAILY  ·  NO BUNKERS", texts);
+    }
+
+    [Fact]
+    public void Attract_CyclesToTodaysChallengeCard()
+    {
+        var engine = NewEngine();
+        var builder = new SceneBuilder
+        {
+            TodaysChallenge = new DailyChallenge(new DateOnly(2026, 10, 13), DailyModifier.Glass),
+        };
+
+        // Fourth card, 4 s apart
+        for (var t = 1; t < 12_010; t += 4001)
+            builder.Build(engine, t);
+        var texts = Texts(builder.Build(engine, 12_004));
+
+        Assert.Contains("DAILY CHALLENGE", texts);
+        Assert.Contains("ONE LIFE, DOUBLE POINTS", texts);
+        Assert.Contains("Press D to play", texts);
+    }
+
     private static void RunMs(GameEngine engine, int ms)
     {
         for (var t = GameEngine.StepMs; t <= ms; t += GameEngine.StepMs)

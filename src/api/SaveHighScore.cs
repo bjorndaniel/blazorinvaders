@@ -29,7 +29,8 @@ public class SaveHighScore(ILogger<SaveHighScore> logger)
             await serviceClient.CreateTableIfNotExistsAsync("HighScores");
 
             var tableClient = new TableClient(connectionString, "HighScores");
-            var entity = new TableEntity("HighScore", Guid.NewGuid().ToString())
+            // All-time scores and each day's challenge live in separate partitions
+            var entity = new TableEntity(HighScoreValidator.PartitionFor(dto), Guid.NewGuid().ToString())
             {
                 ["Name"] = dto.Name,
                 ["Score"] = dto.Score

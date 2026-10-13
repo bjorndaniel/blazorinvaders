@@ -13,6 +13,14 @@ public class GetLeaderboard(ILogger<GetLeaderboard> logger)
     public async Task<HttpResponseData> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequestData req)
     {
+        // ?mode=daily[&day=yyyyMMdd] for a daily challenge board; all-time otherwise
+        if (!HighScoreValidator.TryGetLeaderboardPartition(req.Query["mode"], req.Query["day"], out var partition, out var queryError))
+        {
+            var bad = req.CreateResponse(HttpStatusCode.BadRequest);
+            await bad.WriteStringAsync(queryError);
+            return bad;
+        }
+
         var connectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         if (string.IsNullOrEmpty(connectionString))
         {
@@ -29,7 +37,7 @@ public class GetLeaderboard(ILogger<GetLeaderboard> logger)
 
             var entries = new List<(string Name, int Score)>();
             await foreach (var entity in tableClient.QueryAsync<TableEntity>(
-                filter: "PartitionKey eq 'HighScore'"))
+                filter: TableClient.CreateQueryFilter($"PartitionKey eq {partition}")))
             {
                 var name = entity.GetString("Name") ?? "";
                 var score = entity.GetInt32("Score") ?? 0;

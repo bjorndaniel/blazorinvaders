@@ -1,3 +1,4 @@
+using System.Globalization;
 using BlazorInvaders.GameObjects;
 
 namespace BlazorInvaders.Rendering
@@ -56,6 +57,23 @@ namespace BlazorInvaders.Rendering
         /// <summary>Word on-screen instructions for the touch buttons instead of the keyboard.</summary>
         public bool TouchControls { get; set; }
 
+        /// <summary>Shown on the attract screen; null leaves the daily card out.</summary>
+        public DailyChallenge? TodaysChallenge { get; set; }
+
+        private const string DailyColor = "#00E5FF";
+
+        public static string Describe(DailyModifier modifier) => modifier switch
+        {
+            DailyModifier.NoBunkers   => "NO BUNKERS",
+            DailyModifier.Speedrun    => "FAST START",
+            DailyModifier.ShieldStart => "SHIELD START",
+            DailyModifier.BossRush    => "BOSS EVERY 3RD WAVE",
+            DailyModifier.Glass       => "ONE LIFE, DOUBLE POINTS",
+            _                         => "NO MODIFIER",
+        };
+
+        private static string FormatDate(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
         public Scene Build(GameEngine engine, float timeStamp)
         {
             _cmds.Clear();
@@ -81,7 +99,13 @@ namespace BlazorInvaders.Rendering
             // Particles sit above the playfield but below the banners and pause overlay
             _cmds.Add(Scene.OpEffects);
 
-            if (engine.ShowWaveBanner)
+            if (engine.ShowWaveBanner && engine.Daily is { } daily && engine.Wave == 1)
+            {
+                Rect(0, h / 2 - 50, w, 90, "rgba(0,0,0,0.55)");
+                CenteredText("DAILY CHALLENGE", w, h / 2, 36, DailyColor);
+                CenteredText($"{FormatDate(daily.Date)}  ·  {Describe(daily.Modifier)}", w, h / 2 + 30, 18, White);
+            }
+            else if (engine.ShowWaveBanner)
             {
                 Rect(0, h / 2 - 45, w, 65, "rgba(0,0,0,0.55)");
                 if (engine.IsBossWave)
@@ -91,7 +115,7 @@ namespace BlazorInvaders.Rendering
             }
 
             if (engine.ShowPerfectBonus)
-                CenteredText("PERFECT!  +500", w, 80, 28, Gold);
+                CenteredText($"PERFECT!  +{engine.PerfectWaveBonus}", w, 80, 28, Gold);
 
             if (engine.Paused)
             {
@@ -212,6 +236,9 @@ namespace BlazorInvaders.Rendering
 
             PowerUpStatus(engine, h - 10);
 
+            if (engine.Daily is { } daily)
+                CenteredText($"DAILY  ·  {Describe(daily.Modifier)}", w, h - 10, 14, DailyColor);
+
             // Aliens last so they sit above bunkers and the player but below the overlays
             foreach (var a in engine.Aliens.Where(a => !a.Destroyed))
             {
@@ -252,14 +279,17 @@ namespace BlazorInvaders.Rendering
         {
             CenteredText("GAME OVER", w, h / 2 - 30, 36, White);
             CenteredText(TouchControls ? "Tap to start a new game" : "Press space to start a new game", w, h / 2 + 20, 22, White);
+            if (TodaysChallenge != null)
+                CenteredText("D for today's challenge", w, h / 2 + 55, 18, DailyColor);
         }
 
         private void AttractScreen(GameEngine engine, float timeStamp)
         {
-            // Cycle attract states every 4 seconds
+            // Cycle attract states every 4 seconds; the daily card is the fourth
+            var states = TodaysChallenge == null ? 3 : 4;
             if (timeStamp > 0 && timeStamp - _attractStateStart > 4000)
             {
-                _attractState = (_attractState + 1) % 3;
+                _attractState = (_attractState + 1) % states;
                 _attractStateStart = timeStamp;
             }
 
@@ -278,7 +308,8 @@ namespace BlazorInvaders.Rendering
                     break;
 
                 case 1:
-                    CenteredText("TOP SCORES", w, 130, 26, Gold);
+                    // The board of the mode last played
+                    CenteredText(engine.IsDaily ? "TODAY'S CHALLENGE" : "TOP SCORES", w, 130, 26, Gold);
                     var top = engine.TopScores;
                     if (top.Count == 0)
                     {
@@ -295,6 +326,14 @@ namespace BlazorInvaders.Rendering
                     CenteredText("Use the arrow buttons to move, FIRE to shoot", w, 160, 26, White);
                     CenteredText("Tap the screen to start", w, 220, 28, White);
                     CenteredText("II to pause", w, 265, 18, "#888");
+                    break;
+
+                case 3 when TodaysChallenge is { } daily:
+                    CenteredText("DAILY CHALLENGE", w, 130, 26, DailyColor);
+                    CenteredText(FormatDate(daily.Date), w, 175, 20, White);
+                    CenteredText(Describe(daily.Modifier), w, 220, 24, Gold);
+                    CenteredText("Same game for everyone today", w, 260, 18, "#888");
+                    CenteredText(TouchControls ? "Tap D to play" : "Press D to play", w, 300, 22, White);
                     break;
 
                 default:

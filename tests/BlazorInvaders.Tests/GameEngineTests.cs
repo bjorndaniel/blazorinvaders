@@ -223,6 +223,7 @@ public class GameEngineTests
     {
         var engine = NewEngine();
         engine.Start(0);
+        engine.AliensHoldFire = true;       // a bomb hit would break the combo
         engine.ComboTracker.Count = 10;     // x3
 
         engine.Fire();
@@ -237,6 +238,7 @@ public class GameEngineTests
     {
         var engine = NewEngine();
         engine.Start(0);
+        engine.AliensHoldFire = true;
         engine.ComboTracker.Count = 4;
 
         engine.Fire();

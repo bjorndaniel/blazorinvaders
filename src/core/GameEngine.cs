@@ -16,7 +16,7 @@ namespace BlazorInvaders.GameObjects
         public const int PlayerSpeed = 6;
 
         public const int MaxLives = 5;
-        public const int BossEvery = 5;
+        private const int DefaultBossEvery = 5;
         private const int BossHitPoints = 50;
         private const int BossKillBonus = 1000;
         private const int PowerUpDropPercent = 5;
@@ -38,8 +38,16 @@ namespace BlazorInvaders.GameObjects
 
         private readonly int _width;
         private readonly int _height;
+        // Seeds each game's random streams, unless it is a daily challenge
         private readonly Random _random;
         private readonly GameTime _gameTime = new();
+
+        // One random stream per subsystem, so the daily seed gives every player the same
+        // sequence: bomb and mothership rolls are drawn every step, drop rolls once per kill
+        private Random _bombRng = new(0);
+        private Random _shipRng = new(0);
+        private Random _dropRng = new(0);
+        private int _scoreFactor = 1;
 
         private List<Alien> _aliens = new();
         private List<Shot> _shots = new();
@@ -101,7 +109,14 @@ namespace BlazorInvaders.GameObjects
         public int Points => _points;
         public int Lives => _lives;
         public int Wave => _wave;
+        /// <summary>Waves between bosses: 5, or 3 with the BossRush daily modifier.</summary>
+        public int BossEvery { get; private set; } = DefaultBossEvery;
         public bool IsBossWave => _wave % BossEvery == 0;
+        /// <summary>Today's challenge when this is a daily game, otherwise null.</summary>
+        public DailyChallenge? Daily { get; private set; }
+        public bool IsDaily => Daily != null;
+        /// <summary>Points for clearing a wave without being hit (doubled in a Glass daily).</summary>
+        public int PerfectWaveBonus => 500 * _scoreFactor;
         /// <summary>The boss on a boss wave, otherwise null.</summary>
         public Boss? Boss => _boss;
         public bool DoubleShot => IsActive(PowerUpType.DoubleShot);
@@ -126,6 +141,9 @@ namespace BlazorInvaders.GameObjects
         public int Multiplier => _combo.Multiplier;
         internal ComboTracker ComboTracker => _combo;
 
+        /// <summary>Stops aliens dropping bombs, for tests about other things (the rolls are still drawn).</summary>
+        internal bool AliensHoldFire { get; set; }
+
         /// <summary>Game clock in ms. Only advances while a game is running and unpaused.</summary>
         public float Time => _gameTime.TotalTime;
 
@@ -146,27 +164,39 @@ namespace BlazorInvaders.GameObjects
         public static bool QualifiesForLeaderboard(int points, IReadOnlyList<HighScore> topScores) =>
             points > 0 && (topScores.Count < 10 || points > topScores[^1].Score);
 
+        /// <summary>
+        /// Sets the board that qualification and the "Hi" score are measured against: the all-time
+        /// board, or the day's board for a daily challenge. An empty list clears it.
+        /// </summary>
         public void SetLeaderboard(IEnumerable<HighScore> scores)
         {
             _topScores = scores.Take(10).ToList();
-            if (_topScores.Count > 0 && _topScores[0].Score >= HighScore)
-            {
-                HighScore = _topScores[0].Score;
-                HighScoreName = _topScores[0].Name;
-            }
+            HighScore = _topScores.Count > 0 ? _topScores[0].Score : 0;
+            HighScoreName = _topScores.Count > 0 ? _topScores[0].Name : null;
         }
 
         /// <param name="startWave">Wave to begin on; later waves start at the speed they would have reached.</param>
-        public void Start(float time, int startWave = 1)
+        /// <param name="daily">Play this day's challenge: its seed and modifier.</param>
+        public void Start(float time, int startWave = 1, DailyChallenge? daily = null)
         {
+            Daily = daily;
+            var modifier = daily?.Modifier ?? DailyModifier.None;
+            // A daily game seeds from the date so everyone gets the same sequence
+            var seeds = daily is null ? _random : new Random(daily.Seed);
+            _bombRng = new Random(seeds.Next());
+            _shipRng = new Random(seeds.Next());
+            _dropRng = new Random(seeds.Next());
+            BossEvery = modifier == DailyModifier.BossRush ? 3 : DefaultBossEvery;
+            _scoreFactor = modifier == DailyModifier.Glass ? 2 : 1;
+
             _wave = Math.Max(1, startWave);
-            _gameSpeed = 0.75 * (_wave - 1);
+            _gameSpeed = 0.75 * (_wave - 1) + (modifier == DailyModifier.Speedrun ? 0.75 : 0);
             _shots = new List<Shot>();
             _bombs = new List<Bomb>();
             _powerUps = new List<PowerUp>();
             _motherShip = null;
             Array.Clear(_powerUpUntil);
-            _shield = false;
+            _shield = modifier == DailyModifier.ShieldStart;
             _lastFireTime = float.NegativeInfinity;
             _totalShotsFired = 0;
             _combo.Break();
@@ -179,9 +209,17 @@ namespace BlazorInvaders.GameObjects
             _lastUpdate = time;
             _player = new Player(_width, _height);
             _points = 0;
-            _lives = 3;
+            _lives = modifier == DailyModifier.Glass ? 1 : 3;
             _events.Clear();
             BeginWave(time);
+        }
+
+        /// <summary>Adds points, doubled in a Glass daily. Returns the points actually awarded.</summary>
+        private int Award(int points)
+        {
+            var awarded = points * _scoreFactor;
+            _points += awarded;
+            return awarded;
         }
 
         private void BeginWave(float now)
@@ -304,7 +342,7 @@ namespace BlazorInvaders.GameObjects
                 // Perfect wave bonus
                 if (!_hitThisWave)
                 {
-                    _points += 500;
+                    _points += PerfectWaveBonus;
                     _perfectBonusUntil = now + 2500;
                 }
 
@@ -331,7 +369,7 @@ namespace BlazorInvaders.GameObjects
         {
             var boss = _boss!;
             boss.Hit(now);
-            _points += BossHitPoints * _combo.Multiplier;
+            Award(BossHitPoints * _combo.Multiplier);
             _sounds |= SoundEffect.BossHit;
             Raise(GameEventType.BossHit, s.CurrentPosition, s.Sprite.RenderSize);
             RegisterHit(s);
@@ -340,8 +378,7 @@ namespace BlazorInvaders.GameObjects
 
             if (boss.Defeated)
             {
-                var bonus = BossKillBonus * (_wave / BossEvery);
-                _points += bonus;
+                var bonus = Award(BossKillBonus * (_wave / BossEvery));
                 _sounds |= SoundEffect.BossDefeated;
                 Raise(GameEventType.BossKilled, boss.Position, Boss.Size, bonus);
             }
@@ -377,6 +414,9 @@ namespace BlazorInvaders.GameObjects
 
         private List<Bunker> CreateBunkers()
         {
+            if (Daily?.Modifier == DailyModifier.NoBunkers)
+                return new List<Bunker>();
+
             var spacing = _width / 5;
             return Enumerable.Range(0, 4)
                 .Select(i => new Bunker(new Point(spacing * (i + 1) - Bunker.Size.Width / 2, _height - 120)))
@@ -431,15 +471,14 @@ namespace BlazorInvaders.GameObjects
                 if (hit != null)
                 {
                     hit.HitTime = _gameTime.TotalTime;
-                    var points = GetAlienPoints(hit.Row) * _combo.Multiplier;
-                    _points += points;
+                    var points = Award(GetAlienPoints(hit.Row) * _combo.Multiplier);
                     _sounds |= SoundEffect.AlienDeath;
                     Raise(GameEventType.AlienKilled, hit.CurrentPosition, hit.Sprite.RenderSize, points, hit.Row);
                     RegisterHit(s);
                     if (!s.Piercing)
                         EndShot(s);
 
-                    if (_random.Next(100) < PowerUpDropPercent)
+                    if (_dropRng.Next(100) < PowerUpDropPercent)
                         _powerUps.Add(new PowerUp(hit.CurrentPosition, RollPowerUpType()));
 
                     var alive = AliveCount;
@@ -457,9 +496,9 @@ namespace BlazorInvaders.GameObjects
                 {
                     // Mothership keeps its authentic score table; the hit still counts for the combo
                     _motherShip.Score = GetMotherShipScore();
-                    _points += _motherShip.Score;
+                    var awarded = Award(_motherShip.Score);
                     _sounds |= SoundEffect.AlienDeath;
-                    Raise(GameEventType.MotherShipKilled, _motherShip.CurrentPosition, _motherShip.Sprite.RenderSize, _motherShip.Score);
+                    Raise(GameEventType.MotherShipKilled, _motherShip.CurrentPosition, _motherShip.Sprite.RenderSize, awarded);
                     RegisterHit(s);
                     if (!s.Piercing)
                         EndShot(s);
@@ -473,7 +512,7 @@ namespace BlazorInvaders.GameObjects
             var candidates = PowerUpWeights
                 .Where(w => w.Type != PowerUpType.ExtraLife || _lives < MaxLives)
                 .ToArray();
-            var roll = _random.Next(candidates.Sum(w => w.Weight));
+            var roll = _dropRng.Next(candidates.Sum(w => w.Weight));
             foreach (var (type, weight) in candidates)
             {
                 if (roll < weight) return type;
@@ -541,35 +580,40 @@ namespace BlazorInvaders.GameObjects
             if (_motherShip?.HasBeenHit ?? false) _motherShip.Destroyed = true;
         }
 
+        /// <summary>The bottom alien of the nearest column to <paramref name="column"/> that still has one.</summary>
+        private Alien? LowestAlienNear(int column)
+        {
+            for (int distance = 0; distance <= 10; distance++)
+            {
+                foreach (var c in distance == 0 ? new[] { column } : new[] { column + distance, column - distance })
+                {
+                    var alien = _aliens.Where(a => a.Column == c && !a.Destroyed).MaxBy(a => a.CurrentPosition.Y);
+                    if (alien != null) return alien;
+                }
+            }
+            return null;
+        }
+
         private void UpdateBombs()
         {
+            // Drawn every step whether or not a bomb spawns, so the stream stays in step
+            // across players of the same daily challenge
+            var roll = _bombRng.Next(100);
+            var column = _bombRng.Next(11);
+            var type = (BombType)_bombRng.Next(3);
+
             // In frenzy the last alien always fires; otherwise use normal probability.
             // On a boss wave only the boss fires (see UpdateBoss).
-            var shouldSpawn = !IsBossWave && (IsFrenzy
+            var shouldSpawn = !IsBossWave && !AliensHoldFire && (IsFrenzy
                 ? !_bombs.Any(_ => !_.Remove)
                 : (!_bombs.Any() || _bombs.All(_ => _.Remove)) &&
-                  _random.Next(0, 100) > (85 + (_aliens.Count(_ => _.Destroyed) / 5)));
+                  roll > (85 + (_aliens.Count(_ => _.Destroyed) / 5)));
 
-            if (shouldSpawn)
+            if (shouldSpawn && LowestAlienNear(column) is { } alien)
             {
-                var xColumn = _random.Next(0, 11);
-                var alien = _aliens.OrderByDescending(_ => _.CurrentPosition.Y)
-                    .FirstOrDefault(_ => _.Column == xColumn && !_.Destroyed);
-                var counter = 0;
-                while (alien == null && counter < 60)
-                {
-                    xColumn = _random.Next(0, 11);
-                    alien = _aliens.OrderByDescending(_ => _.CurrentPosition.Y)
-                        .FirstOrDefault(_ => _.Column == xColumn && !_.Destroyed);
-                    counter++;
-                }
-                if (alien != null)
-                {
-                    var type = (BombType)_random.Next(3);
-                    _bombs.Add(new Bomb(
-                        new Point(alien.CurrentPosition.X + alien.Sprite.RenderSize.Width / 2, alien.CurrentPosition.Y),
-                        type));
-                }
+                _bombs.Add(new Bomb(
+                    new Point(alien.CurrentPosition.X + alien.Sprite.RenderSize.Width / 2, alien.CurrentPosition.Y),
+                    type));
             }
 
             foreach (var b in _bombs.Where(_ => !_.Remove))
@@ -656,9 +700,11 @@ namespace BlazorInvaders.GameObjects
 
         private void UpdateMotherShip()
         {
+            // Drawn every step, like the bomb rolls
+            var roll = _shipRng.Next(100);
             if (_motherShip == null)
             {
-                if (!IsBossWave && _random.Next(100) > 90)
+                if (!IsBossWave && roll > 90)
                     _motherShip = new MotherShip(new Point(_width, 80));
                 return;
             }

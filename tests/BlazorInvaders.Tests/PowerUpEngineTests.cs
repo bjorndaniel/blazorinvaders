@@ -80,6 +80,7 @@ public class PowerUpEngineTests
     {
         var engine = NewEngine();
         engine.Start(0);
+        engine.AliensHoldFire = true;       // a bomb hit would break the combo
         var t = Collect(engine, PowerUpType.Piercing, 0);
 
         engine.Fire();
@@ -130,6 +131,7 @@ public class PowerUpEngineTests
     {
         var engine = NewEngine();
         engine.Start(0);
+        engine.AliensHoldFire = true;       // the game must still be running after 10 s
         var t = Collect(engine, PowerUpType.RapidFire, 0);
 
         Assert.True(engine.IsActive(PowerUpType.RapidFire));

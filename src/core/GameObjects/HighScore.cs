@@ -9,5 +9,15 @@ namespace BlazorInvaders.GameObjects
 
         [JsonPropertyName("score")]
         public int Score { get; set; }
+
+        /// <summary>"daily" for a daily challenge score; omitted for the all-time board.</summary>
+        [JsonPropertyName("mode")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Mode { get; set; }
+
+        /// <summary>The daily challenge's date as yyyyMMdd.</summary>
+        [JsonPropertyName("day")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Day { get; set; }
     }
 }

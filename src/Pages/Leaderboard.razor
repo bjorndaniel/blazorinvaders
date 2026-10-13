@@ -1,4 +1,6 @@
 @page "/leaderboard"
+@using BlazorInvaders.GameObjects
+@using BlazorInvaders.Rendering
 @inject HttpClient Http
 @inject IConfiguration Config
 
@@ -10,6 +12,20 @@
 
 <div class="row justify-content-center">
     <div class="col-auto">
+        <div class="btn-group mb-3" role="tablist">
+            <button type="button" role="tab" aria-selected="@(!_daily)"
+                    class="btn @(_daily ? "btn-outline-light" : "btn-light")" @onclick="() => ShowAsync(daily: false)">All-time</button>
+            <button type="button" role="tab" aria-selected="@_daily"
+                    class="btn @(_daily ? "btn-light" : "btn-outline-light")" @onclick="() => ShowAsync(daily: true)">Today's challenge</button>
+        </div>
+
+        @if (_daily)
+        {
+            <p class="text-center" style="color:#aaa">
+                @_today.Date.ToString("yyyy-MM-dd") &middot; @SceneBuilder.Describe(_today.Modifier)
+            </p>
+        }
+
         @if (_scores == null)
         {
             <p>Loading...</p>
@@ -47,20 +63,30 @@
 </div>
 
 @code {
-    private List<LeaderboardEntry>? _scores;
+    private readonly DailyChallenge _today = DailyChallenge.Today();
+    private List<HighScore>? _scores;
+    private bool _daily;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => ShowAsync(daily: false);
+
+    private async Task ShowAsync(bool daily)
     {
+        _daily = daily;
+        _scores = null;
+        var url = daily
+            ? $"{Config["FunctionsApi"]}/getleaderboard?mode=daily&day={_today.Key}"
+            : $"{Config["FunctionsApi"]}/getleaderboard";
         try
         {
-            var url = $"{Config["FunctionsApi"]}/getleaderboard";
-            _scores = await Http.GetFromJsonAsync<List<LeaderboardEntry>>(url) ?? new();
+            var scores = await Http.GetFromJsonAsync<List<HighScore>>(url) ?? new();
+            // Ignore a slow response for the tab the user already switched away from
+            if (_daily == daily)
+                _scores = scores;
         }
         catch
         {
-            _scores = new();
+            if (_daily == daily)
+                _scores = new();
         }
     }
-
-    private record LeaderboardEntry(string Name, int Score);
 }

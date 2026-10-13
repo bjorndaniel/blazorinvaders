@@ -21,6 +21,10 @@
         {
             <small style="color:#aaa">Your best: @_personalBest &nbsp;&nbsp;</small>
         }
+        @if (_dailyBest > 0)
+        {
+            <small style="color:#aaa">Today's challenge: @_dailyBest &nbsp;&nbsp;</small>
+        }
         <a href="/leaderboard" style="color:#aaa; font-size:small">Leaderboard</a>
     </div>
 </div>
@@ -38,6 +42,7 @@
             <div class="touch-pad touch-actions">
                 <button type="button" class="touch-btn touch-fire" data-input="4" aria-label="Fire">FIRE</button>
                 <button type="button" class="touch-btn touch-small" data-press="16" aria-label="Pause">II</button>
+                <button type="button" class="touch-btn touch-small touch-daily" data-press="32" aria-label="Daily challenge">D</button>
             </div>
         </div>
     </div>
@@ -51,6 +56,7 @@
     const int HeldMask = 7;
     const int StartPressed = 8;
     const int PausePressed = 16;
+    const int DailyPressed = 32;
 
     // Development only: /?wave=5 starts games on that wave, e.g. to try the boss
     [SupplyParameterFromQuery(Name = "wave")]
@@ -67,7 +73,10 @@
     bool _disableKeyboard = false;
     bool _disposed = false;
     int _personalBest = 0;
+    int _dailyBest = 0;
     bool _prevGameOver = false;
+
+    static string DailyBestKey(DailyChallenge daily) => $"dailyBest-{daily.Key}";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -79,6 +88,10 @@
         var stored = await _module.InvokeAsync<string?>("getItem", "personalBest");
         if (int.TryParse(stored, out var pb))
             _personalBest = pb;
+        _scenes.TodaysChallenge = DailyChallenge.Today();
+        stored = await _module.InvokeAsync<string?>("getItem", DailyBestKey(_scenes.TodaysChallenge));
+        if (int.TryParse(stored, out var db))
+            _dailyBest = db;
 
         _engine.QualifiedForLeaderboard += OnQualifiedForLeaderboard;
         _dotNetRef = DotNetObjectReference.Create(this);
@@ -124,7 +137,16 @@
         if (_engine.GameOver && !_prevGameOver)
         {
             _prevGameOver = true;
-            if (_engine.Points > _personalBest)
+            if (_engine.Daily is { } daily)
+            {
+                // Best per day, kept for today's challenge (a game that crosses midnight isn't counted)
+                if (daily == _scenes.TodaysChallenge && _engine.Points > _dailyBest)
+                {
+                    _dailyBest = _engine.Points;
+                    await _module!.InvokeVoidAsync("setItem", DailyBestKey(daily), _dailyBest.ToString());
+                }
+            }
+            else if (_engine.Points > _personalBest)
             {
                 _personalBest = _engine.Points;
                 await _module!.InvokeVoidAsync("setItem", "personalBest", _personalBest.ToString());
@@ -144,8 +166,36 @@
         if ((input & PausePressed) != 0 && _engine.Started)
             _engine.TogglePause();
 
-        if ((input & StartPressed) != 0 && !_engine.Started)
-            _engine.Start(timeStamp, DevStartWave);
+        if (_engine.Started)
+            return;
+        if ((input & DailyPressed) != 0)
+            StartGame(timeStamp, TodaysChallenge());
+        else if ((input & StartPressed) != 0)
+            StartGame(timeStamp, null);
+    }
+
+    void StartGame(float timeStamp, DailyChallenge? daily)
+    {
+        var boardChanged = _engine.Daily != daily;
+        _engine.Start(timeStamp, DevStartWave, daily);
+        if (boardChanged)
+        {
+            // Qualification and "Hi" are measured against this mode's board
+            _engine.SetLeaderboard([]);
+            _ = LoadLeaderboardAsync();
+        }
+    }
+
+    DailyChallenge TodaysChallenge()
+    {
+        var today = DailyChallenge.Today();
+        if (today != _scenes.TodaysChallenge)
+        {
+            // The date rolled over while the page was open
+            _scenes.TodaysChallenge = today;
+            _dailyBest = 0;
+        }
+        return today;
     }
 
     private async Task LoadLeaderboardAsync()
@@ -154,8 +204,13 @@
         {
             // Scores saved while offline go first, so they show up in the board we fetch
             await SendPendingScoresAsync();
-            var scores = await Http.GetFromJsonAsync<List<HighScore>>($"{Config["FunctionsApi"]}/getleaderboard");
-            if (scores != null)
+            var daily = _engine.Daily;
+            var url = daily is null
+                ? $"{Config["FunctionsApi"]}/getleaderboard"
+                : $"{Config["FunctionsApi"]}/getleaderboard?mode=daily&day={daily.Key}";
+            var scores = await Http.GetFromJsonAsync<List<HighScore>>(url);
+            // Ignore the result if the player switched modes while it loaded
+            if (scores != null && _engine.Daily == daily)
                 _engine.SetLeaderboard(scores);
         }
         catch (Exception ex)
@@ -172,11 +227,19 @@
         _disableKeyboard = true;
         try
         {
-            var title = _engine.Points >= _engine.HighScore ? "New High Score!" : "You made the leaderboard!";
+            var daily = _engine.Daily;
+            var title = _engine.Points >= _engine.HighScore
+                ? (daily is null ? "New High Score!" : "Top of today's challenge!")
+                : (daily is null ? "You made the leaderboard!" : "You made today's board!");
             var result = await Modal.Show<SetHighScore>(title).Result;
             if (result.Cancelled || result.Data is not HighScore score)
                 return;
 
+            if (daily != null)
+            {
+                score.Mode = "daily";
+                score.Day = daily.Key;
+            }
             score.Score = _engine.Points;
             if (_engine.Points >= _engine.HighScore)
                 _engine.HighScoreName = score.Name;

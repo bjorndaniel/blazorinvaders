@@ -10,9 +10,9 @@ const OP_SPRITE = 1, OP_RECT = 2, OP_TEXT = 3, OP_DIAMOND = 4, OP_CIRCLE = 5, OP
 const SOUND_SHOOT = 1, SOUND_ALIEN_DEATH = 2, SOUND_PLAYER_DEATH = 4, SOUND_MOTHERSHIP = 8, SOUND_STOP_MARCH = 16,
     SOUND_POWER_UP = 32, SOUND_SHIELD_BLOCK = 64, SOUND_BOSS_HIT = 128, SOUND_BOSS_DEFEATED = 256;
 // Held controls must match GameInput in Enumerations.cs; one-shot presses must match Index.razor
-const INPUT_LEFT = 1, INPUT_RIGHT = 2, INPUT_FIRE = 4, INPUT_START = 8, INPUT_PAUSE = 16;
+const INPUT_LEFT = 1, INPUT_RIGHT = 2, INPUT_FIRE = 4, INPUT_START = 8, INPUT_PAUSE = 16, INPUT_DAILY = 32;
 const HELD_KEYS = { ArrowLeft: INPUT_LEFT, ArrowRight: INPUT_RIGHT, Space: INPUT_FIRE };
-const PAUSE_KEYS = new Set(['KeyP', 'Escape']);
+const PRESS_KEYS = { KeyP: INPUT_PAUSE, Escape: INPUT_PAUSE, KeyD: INPUT_DAILY };
 
 const SPRITE_SHEET_URL = 'assets/sprites_cleaned.png';
 const TINT_ALPHA = 0.65;
@@ -150,9 +150,9 @@ function onKeyDown(e) {
         e.preventDefault();
         keysHeld |= bit;
         if (!e.repeat) pressed |= bit | (bit === INPUT_FIRE ? INPUT_START : 0);
-    } else if (PAUSE_KEYS.has(e.code)) {
+    } else if (PRESS_KEYS[e.code]) {
         e.preventDefault();
-        if (!e.repeat) pressed |= INPUT_PAUSE;
+        if (!e.repeat) pressed |= PRESS_KEYS[e.code];
     }
 }
 
