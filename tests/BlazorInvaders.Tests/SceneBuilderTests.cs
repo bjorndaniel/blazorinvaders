@@ -191,6 +191,40 @@ public class SceneBuilderTests
         Assert.Contains("P", Texts(scene));
     }
 
+    [Fact]
+    public void BossWave_ShowsBannerBossAndHealthBar()
+    {
+        var engine = NewEngine();
+        engine.Start(0, startWave: 5);
+        engine.Boss!.Hp = 15;
+
+        var scene = new SceneBuilder().Build(engine, 0);
+        var commands = Decode(scene);
+
+        Assert.Contains("BOSS WAVE", Texts(scene));
+        Assert.Contains("BOSS", Texts(scene));
+        Assert.Single(commands, c => c.op == Scene.OpSprite && c.args[6] == Boss.Size.Width);
+        // Health bar: full-width background and a half-width fill
+        Assert.Contains(commands, c => c.op == Scene.OpRect && c.args[2] == 300);
+        Assert.Contains(commands, c => c.op == Scene.OpRect && c.args[2] == 150);
+    }
+
+    [Fact]
+    public void BossKill_IsEncodedWithBonusLabel()
+    {
+        var engine = NewEngine();
+        engine.Start(0, startWave: 5);
+        engine.Boss!.Hp = 1;
+        var t = TestPlay.ChaseAndShootBoss(engine);
+
+        var scene = new SceneBuilder().Build(engine, t);
+
+        var labels = Enumerable.Range(0, scene.Events.Length / Scene.EventStride)
+            .Where(i => scene.Events[i * Scene.EventStride] == (int)GameEventType.BossKilled)
+            .Select(i => scene.Strings[scene.Events[i * Scene.EventStride + 3]]);
+        Assert.Equal(new[] { "BOSS DOWN +1000" }, labels);
+    }
+
     private static void RunMs(GameEngine engine, int ms)
     {
         for (var t = GameEngine.StepMs; t <= ms; t += GameEngine.StepMs)

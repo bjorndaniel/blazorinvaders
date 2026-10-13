@@ -16,6 +16,9 @@ namespace BlazorInvaders.GameObjects
         public const int PlayerSpeed = 6;
 
         public const int MaxLives = 5;
+        public const int BossEvery = 5;
+        private const int BossHitPoints = 50;
+        private const int BossKillBonus = 1000;
         private const int PowerUpDropPercent = 5;
         private const float RapidFireIntervalMs = 120;
 
@@ -46,6 +49,8 @@ namespace BlazorInvaders.GameObjects
         private List<HighScore> _topScores = new();
         private Player? _player;
         private MotherShip? _motherShip;
+        private Boss? _boss;
+        private float _bossNextAttack;
 
         private float _lastTimeStamp;
         private float _stepAccumulator;
@@ -96,6 +101,9 @@ namespace BlazorInvaders.GameObjects
         public int Points => _points;
         public int Lives => _lives;
         public int Wave => _wave;
+        public bool IsBossWave => _wave % BossEvery == 0;
+        /// <summary>The boss on a boss wave, otherwise null.</summary>
+        public Boss? Boss => _boss;
         public bool DoubleShot => IsActive(PowerUpType.DoubleShot);
         public bool HasShield => _shield;
         public bool LostALife { get; private set; }
@@ -148,16 +156,15 @@ namespace BlazorInvaders.GameObjects
             }
         }
 
-        public void Start(float time)
+        /// <param name="startWave">Wave to begin on; later waves start at the speed they would have reached.</param>
+        public void Start(float time, int startWave = 1)
         {
-            _gameSpeed = 0;
-            _wave = 1;
-            _waveDisplayUntil = time + 2000;
-            _aliens = CreateAlienGrid();
+            _wave = Math.Max(1, startWave);
+            _gameSpeed = 0.75 * (_wave - 1);
             _shots = new List<Shot>();
             _bombs = new List<Bomb>();
             _powerUps = new List<PowerUp>();
-            _bunkers = CreateBunkers();
+            _motherShip = null;
             Array.Clear(_powerUpUntil);
             _shield = false;
             _lastFireTime = float.NegativeInfinity;
@@ -173,10 +180,32 @@ namespace BlazorInvaders.GameObjects
             _player = new Player(_width, _height);
             _points = 0;
             _lives = 3;
-            _hitThisWave = false;
-            _lastAliveCount = 55;
-            _marchCount = _lastAliveCount;
             _events.Clear();
+            BeginWave(time);
+        }
+
+        private void BeginWave(float now)
+        {
+            _waveDisplayUntil = now + 2000;
+            _hitThisWave = false;
+            _bunkers = CreateBunkers();
+
+            if (IsBossWave)
+            {
+                _aliens = new List<Alien>();
+                _boss = new Boss(30 + 10 * (_wave / BossEvery - 1), _width / 2 - Boss.Size.Width / 2);
+                _bossNextAttack = now + 2000;   // first attack once the banner is gone
+                _motherShip = null;
+                _lastAliveCount = 0;
+                _sounds |= SoundEffect.StopMarch;
+            }
+            else
+            {
+                _boss = null;
+                _aliens = CreateAlienGrid();
+                _lastAliveCount = 55;
+                _marchCount = _lastAliveCount;
+            }
         }
 
         public void TogglePause() => Paused = !Paused;
@@ -258,6 +287,7 @@ namespace BlazorInvaders.GameObjects
             ApplyInput();
             UpdateBombs();
             UpdateAliens();
+            UpdateBoss(now);
             UpdateShots();
             UpdatePowerUps();
             UpdateMotherShip();
@@ -267,7 +297,9 @@ namespace BlazorInvaders.GameObjects
             _bombs.RemoveAll(b => b.Remove);
             _powerUps.RemoveAll(p => p.Collected);
 
-            if (_aliens.All(_ => _.Destroyed))
+            // A boss wave has no aliens, so it is only cleared by defeating the boss
+            var cleared = IsBossWave ? _boss is { Defeated: true } : _aliens.All(_ => _.Destroyed);
+            if (cleared && !GameOver)
             {
                 // Perfect wave bonus
                 if (!_hitThisWave)
@@ -278,12 +310,40 @@ namespace BlazorInvaders.GameObjects
 
                 _gameSpeed += 0.75;
                 _wave++;
-                _waveDisplayUntil = now + 2000;
-                _hitThisWave = false;
-                _aliens = CreateAlienGrid();
-                _bunkers = CreateBunkers();
-                _lastAliveCount = 55;
-                _marchCount = _lastAliveCount;
+                BeginWave(now);
+            }
+        }
+
+        private void UpdateBoss(float now)
+        {
+            if (_boss == null || _boss.Defeated) return;
+
+            _boss.Move(_width);
+            if (now >= _bossNextAttack && _player != null)
+            {
+                var size = _player.Sprite.RenderSize;
+                _bombs.AddRange(_boss.Attack(_player.CurrentPosition.X + size.Width / 2, _player.CurrentPosition.Y));
+                _bossNextAttack = now + _boss.AttackIntervalMs;
+            }
+        }
+
+        private void HitBoss(Shot s, float now)
+        {
+            var boss = _boss!;
+            boss.Hit(now);
+            _points += BossHitPoints * _combo.Multiplier;
+            _sounds |= SoundEffect.BossHit;
+            Raise(GameEventType.BossHit, s.CurrentPosition, s.Sprite.RenderSize);
+            RegisterHit(s);
+            // Piercing shots stop here too, or they would hit on every step they overlap
+            EndShot(s);
+
+            if (boss.Defeated)
+            {
+                var bonus = BossKillBonus * (_wave / BossEvery);
+                _points += bonus;
+                _sounds |= SoundEffect.BossDefeated;
+                Raise(GameEventType.BossKilled, boss.Position, Boss.Size, bonus);
             }
         }
 
@@ -390,6 +450,9 @@ namespace BlazorInvaders.GameObjects
                     }
                 }
 
+                if (!s.Remove && _boss != null && _boss.Collision(s))
+                    HitBoss(s, _gameTime.TotalTime);
+
                 if (_motherShip != null && !_motherShip.HasBeenHit && _motherShip.Collision(s))
                 {
                     // Mothership keeps its authentic score table; the hit still counts for the combo
@@ -480,11 +543,12 @@ namespace BlazorInvaders.GameObjects
 
         private void UpdateBombs()
         {
-            // In frenzy the last alien always fires; otherwise use normal probability
-            var shouldSpawn = IsFrenzy
+            // In frenzy the last alien always fires; otherwise use normal probability.
+            // On a boss wave only the boss fires (see UpdateBoss).
+            var shouldSpawn = !IsBossWave && (IsFrenzy
                 ? !_bombs.Any(_ => !_.Remove)
                 : (!_bombs.Any() || _bombs.All(_ => _.Remove)) &&
-                  _random.Next(0, 100) > (85 + (_aliens.Count(_ => _.Destroyed) / 5));
+                  _random.Next(0, 100) > (85 + (_aliens.Count(_ => _.Destroyed) / 5)));
 
             if (shouldSpawn)
             {
@@ -594,7 +658,7 @@ namespace BlazorInvaders.GameObjects
         {
             if (_motherShip == null)
             {
-                if (_random.Next(100) > 90)
+                if (!IsBossWave && _random.Next(100) > 90)
                     _motherShip = new MotherShip(new Point(_width, 80));
                 return;
             }

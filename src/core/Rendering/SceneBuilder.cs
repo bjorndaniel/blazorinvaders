@@ -32,6 +32,9 @@ namespace BlazorInvaders.Rendering
             ("#40FF40", "+", "+1 LIFE",     ""),
         };
 
+        // Indexed by Boss.Phase; null keeps the sprite's own red
+        private static readonly string?[] BossPhaseTints = { null, "#ff9900", "#ff00ff" };
+
         private static readonly Sprite LifeIcon = new(20, 47, 38, 59);
 
         private static readonly (Sprite sprite, string label)[] ScoreTable =
@@ -78,7 +81,10 @@ namespace BlazorInvaders.Rendering
             if (engine.ShowWaveBanner)
             {
                 Rect(0, h / 2 - 45, w, 65, "rgba(0,0,0,0.55)");
-                CenteredText($"WAVE {engine.Wave}", w, h / 2 + 5, 40, "#00FF88");
+                if (engine.IsBossWave)
+                    CenteredText("BOSS WAVE", w, h / 2 + 5, 40, MotherShipRed);
+                else
+                    CenteredText($"WAVE {engine.Wave}", w, h / 2 + 5, 40, "#00FF88");
             }
 
             if (engine.ShowPerfectBonus)
@@ -122,6 +128,8 @@ namespace BlazorInvaders.Rendering
                     GameEventType.ComboUp => ($"COMBO x{e.Value}!", Gold),
                     GameEventType.PowerUpCollected => (PowerUpStyles[e.Variant].Name, PowerUpStyles[e.Variant].Color),
                     GameEventType.ShieldBlocked => (null, PowerUpStyles[(int)PowerUpType.Shield].Color),
+                    GameEventType.BossHit => (null, White),
+                    GameEventType.BossKilled => ($"BOSS DOWN +{e.Value}", Gold),
                     _ => ((string?)null, (string?)null),
                 };
 
@@ -186,6 +194,9 @@ namespace BlazorInvaders.Rendering
             if (engine.MotherShip is { } ship)
                 Sprite(ship.Sprite, ship.CurrentPosition.X, ship.CurrentPosition.Y);
 
+            if (engine.Boss is { Defeated: false } boss)
+                BossFrame(boss, engine.Time, w);
+
             foreach (var p in engine.PowerUps)
             {
                 var style = PowerUpStyles[(int)p.Type];
@@ -204,6 +215,20 @@ namespace BlazorInvaders.Rendering
                 var tint = a.HasBeenHit ? null : RowTints[a.Row < RowTints.Length ? a.Row : 0];
                 Sprite(a.Sprite, a.CurrentPosition.X, a.CurrentPosition.Y, tint: tint);
             }
+        }
+
+        private void BossFrame(Boss boss, float time, int w)
+        {
+            // White for a moment after each hit, otherwise angrier colours as health drops
+            var tint = time - boss.LastHitTime < 80 ? "#ffffff" : BossPhaseTints[boss.Phase];
+            Sprite(Boss.ShipSprite, boss.Position.X, boss.Position.Y, Boss.Size.Width, Boss.Size.Height, tint);
+
+            const int barWidth = 300, barHeight = 8, barY = 36;
+            var barX = w / 2 - barWidth / 2;
+            var fill = boss.Hp * barWidth / boss.MaxHp;
+            Text("BOSS", barX - 60, barY + 9, 14, MotherShipRed);
+            Rect(barX, barY, barWidth, barHeight, "rgba(255,255,255,0.2)");
+            Rect(barX, barY, fill, barHeight, boss.Phase == 2 ? "#ff9900" : MotherShipRed);
         }
 
         // Active power-ups along the bottom left, e.g. "RAPID 7  SHIELD"

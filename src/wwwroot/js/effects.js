@@ -4,7 +4,8 @@
 
 // Must match GameEventType in Enumerations.cs
 const EVENT_ALIEN_KILLED = 1, EVENT_PLAYER_HIT = 2, EVENT_MOTHERSHIP_KILLED = 3, EVENT_BUNKER_HIT = 4,
-    EVENT_COMBO_UP = 5, EVENT_POWER_UP = 6, EVENT_SHIELD_BLOCKED = 7;
+    EVENT_COMBO_UP = 5, EVENT_POWER_UP = 6, EVENT_SHIELD_BLOCKED = 7, EVENT_BOSS_HIT = 8, EVENT_BOSS_KILLED = 9;
+const BOSS_DEBRIS = ['#ff4040', '#ff9900', '#ffd700', '#ffffff'];
 // Must match Scene.EventStride
 const EVENT_STRIDE = 5;
 
@@ -70,6 +71,15 @@ export function update(now, { events, strings, paused }) {
             case EVENT_SHIELD_BLOCKED:
                 burst(x, y - 10, color, 20, 200);
                 startShake(3, 150);
+                break;
+            case EVENT_BOSS_HIT:
+                burst(x, y, color, 6, 120);
+                startShake(2, 80);
+                break;
+            case EVENT_BOSS_KILLED:
+                for (const debris of BOSS_DEBRIS) burst(x, y, debris, 30, 320);
+                if (label) addLabel(label, x, y, color, '24px Orbitron');
+                startShake(12, 500);
                 break;
         }
     }

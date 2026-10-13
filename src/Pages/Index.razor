@@ -1,10 +1,12 @@
 @page "/"
 @using BlazorInvaders.GameObjects
 @using BlazorInvaders.Rendering
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 @inject IJSRuntime JsRuntime;
 @inject IConfiguration Config
 @inject HttpClient Http
 @inject IModalService Modal
+@inject IWebAssemblyHostEnvironment HostEnvironment
 @implements IAsyncDisposable
 
 <div class="row">
@@ -38,6 +40,11 @@
     const int HeldMask = 7;
     const int StartPressed = 8;
     const int PausePressed = 16;
+
+    // Development only: /?wave=5 starts games on that wave, e.g. to try the boss
+    [SupplyParameterFromQuery(Name = "wave")]
+    public int? Wave { get; set; }
+    int DevStartWave => HostEnvironment.IsDevelopment() && Wave is > 1 ? Wave.Value : 1;
 
     readonly GameEngine _engine = new(Width, Height);
     readonly SceneBuilder _scenes = new();
@@ -125,7 +132,7 @@
             _engine.TogglePause();
 
         if ((input & StartPressed) != 0 && !_engine.Started)
-            _engine.Start(timeStamp);
+            _engine.Start(timeStamp, DevStartWave);
     }
 
     private async Task LoadLeaderboardAsync()

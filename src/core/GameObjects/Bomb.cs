@@ -8,12 +8,15 @@ namespace BlazorInvaders.GameObjects
         private Point _currentPosition;
         private float _phase;
         private readonly BombType _type;
+        private readonly int _dx;
 
-        public Bomb(Point start, BombType type = BombType.Straight)
+        /// <param name="dx">Constant sideways speed in px per step, for angled shots.</param>
+        public Bomb(Point start, BombType type = BombType.Straight, int dx = 0)
         {
             _bomb = new Sprite(0, 69, 5, 80);
             _currentPosition = start;
             _type = type;
+            _dx = dx;
         }
 
         public Sprite Sprite => _bomb;
@@ -29,7 +32,7 @@ namespace BlazorInvaders.GameObjects
                 BombType.Rolling => (int)(Math.Cos(_phase * 0.7f) * 5),
                 _                => 0
             };
-            _currentPosition = new Point(_currentPosition.X + xOffset, _currentPosition.Y + 10);
+            _currentPosition = new Point(_currentPosition.X + xOffset + _dx, _currentPosition.Y + 10);
         }
     }
 }

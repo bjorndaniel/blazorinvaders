@@ -40,6 +40,8 @@
         ComboUp          = 5,
         PowerUpCollected = 6,
         ShieldBlocked    = 7,
+        BossHit          = 8,
+        BossKilled       = 9,
     }
 
     public enum PowerUpType
@@ -60,7 +62,9 @@
         PlayerDeath = 4,
         MotherShip  = 8,
         StopMarch   = 16,
-        PowerUp     = 32,
-        ShieldBlock = 64,
+        PowerUp      = 32,
+        ShieldBlock  = 64,
+        BossHit      = 128,
+        BossDefeated = 256,
     }
 }
