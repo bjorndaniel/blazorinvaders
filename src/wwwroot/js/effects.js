@@ -3,7 +3,8 @@
 // affect gameplay. Used by game.js.
 
 // Must match GameEventType in Enumerations.cs
-const EVENT_ALIEN_KILLED = 1, EVENT_PLAYER_HIT = 2, EVENT_MOTHERSHIP_KILLED = 3, EVENT_BUNKER_HIT = 4;
+const EVENT_ALIEN_KILLED = 1, EVENT_PLAYER_HIT = 2, EVENT_MOTHERSHIP_KILLED = 3, EVENT_BUNKER_HIT = 4,
+    EVENT_COMBO_UP = 5;
 // Must match Scene.EventStride
 const EVENT_STRIDE = 5;
 
@@ -58,6 +59,10 @@ export function update(now, { events, strings, paused }) {
             case EVENT_BUNKER_HIT:
                 burst(x, y, color, 4, 80);
                 break;
+            case EVENT_COMBO_UP:
+                burst(x, y - 20, color, 16, 120);
+                if (label) addLabel(label, x, y - 30, color, '20px Orbitron');
+                break;
         }
     }
 }
@@ -80,10 +85,10 @@ export function draw(ctx) {
         ctx.fillRect(p.x, p.y, p.size, p.size);
     }
 
-    ctx.font = LABEL_FONT;
     ctx.textAlign = 'center';
     for (const l of labels) {
         const t = (clock - l.start) / LABEL_MS;
+        ctx.font = l.font;
         ctx.globalAlpha = Math.max(0, 1 - t);
         ctx.fillStyle = l.color;
         ctx.fillText(l.text, l.x, l.y - t * 30);
@@ -129,8 +134,8 @@ function burst(x, y, color, count, speed) {
     }
 }
 
-function addLabel(text, x, y, color) {
-    labels.push({ text, x, y, color, start: clock });
+function addLabel(text, x, y, color, font = LABEL_FONT) {
+    labels.push({ text, x, y, color, font, start: clock });
 }
 
 function startShake(strength, duration) {

@@ -53,6 +53,9 @@ namespace BlazorInvaders.Rendering
             if (engine.DoubleShot) header += "  * 2x SHOT";
             Text(header, 10, 22, 18, White);
 
+            if (engine.Started && engine.Multiplier > 1)
+                Text($"COMBO x{engine.Multiplier}", w - 170, 22, 18, Gold);
+
             if (engine.GameOver)
                 GameOverScreen(w, h);
             else if (engine.Started)
@@ -107,6 +110,7 @@ namespace BlazorInvaders.Rendering
                     GameEventType.MotherShipKilled => ($"+{e.Value}", MotherShipRed),
                     GameEventType.PlayerHit => (null, White),
                     GameEventType.BunkerHit => (null, BunkerColor(e.Variant)),
+                    GameEventType.ComboUp => ($"COMBO x{e.Value}!", Gold),
                     _ => ((string?)null, (string?)null),
                 };
 

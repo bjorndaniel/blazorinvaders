@@ -219,6 +219,68 @@ public class GameEngineTests
     }
 
     [Fact]
+    public void KillDuringCombo_ScoresMultipliedPoints()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        engine.ComboTracker.Count = 10;     // x3
+
+        engine.Fire();
+        Run(engine, 0, 500);
+
+        Assert.Equal(30, engine.Points);
+        Assert.Equal(11, engine.Combo);
+    }
+
+    [Fact]
+    public void ReachingNextMultiplier_RaisesComboUpEvent()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        engine.ComboTracker.Count = 4;
+
+        engine.Fire();
+        Run(engine, 0, 500);
+
+        var up = Assert.Single(engine.TakeEvents(), e => e.Type == GameEventType.ComboUp);
+        Assert.Equal(2, up.Value);
+        Assert.Equal(2, engine.Multiplier);
+    }
+
+    [Fact]
+    public void ShotHittingBunker_BreaksCombo()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        // 10 steps right puts the shot over the third bunker (x 492-552)
+        engine.SetInput(GameInput.Right);
+        var t = Run(engine, 0, 10 * GameEngine.StepMs);
+        engine.SetInput(GameInput.None);
+        engine.ComboTracker.Count = 7;
+
+        engine.Fire();
+        Run(engine, t, 500);
+
+        Assert.Equal(0, engine.Combo);
+        Assert.Equal(0, engine.Points);
+    }
+
+    [Fact]
+    public void LosingALife_BreaksCombo()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        engine.ComboTracker.Count = 7;
+
+        var t = 0f;
+        while (engine.Lives == 3 && t < 60_000)
+            t = Run(engine, t, 100);
+
+        Assert.Equal(2, engine.Lives);
+        Assert.Equal(0, engine.Combo);
+    }
+
+    [Fact]
     public void LosingTheGame_RaisesPlayerHitEvent()
     {
         var engine = NewEngine();

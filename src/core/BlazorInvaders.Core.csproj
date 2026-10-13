@@ -8,4 +8,9 @@
     <RootNamespace>BlazorInvaders</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Lets tests set up engine state (combo, waves, power-ups) directly -->
+    <InternalsVisibleTo Include="BlazorInvaders.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -52,6 +52,7 @@ namespace BlazorInvaders.GameObjects
         private float _doubleShotUntil;
 
         private int _totalShotsFired;
+        private readonly ComboTracker _combo = new();
         private int _lastAliveCount;
         private float _lastMotherShipPing;
 
@@ -81,6 +82,12 @@ namespace BlazorInvaders.GameObjects
         public int Wave => _wave;
         public bool DoubleShot => _doubleShot;
         public bool LostALife { get; private set; }
+
+        /// <summary>Consecutive hits; see <see cref="ComboTracker"/>.</summary>
+        public int Combo => _combo.Count;
+        /// <summary>Applied to alien points: x2 after 5 hits in a row, up to x4.</summary>
+        public int Multiplier => _combo.Multiplier;
+        internal ComboTracker ComboTracker => _combo;
 
         /// <summary>Game clock in ms. Only advances while a game is running and unpaused.</summary>
         public float Time => _gameTime.TotalTime;
@@ -125,6 +132,7 @@ namespace BlazorInvaders.GameObjects
             _doubleShot = false;
             _doubleShotUntil = 0;
             _totalShotsFired = 0;
+            _combo.Break();
             Started = true;
             GameOver = false;
             LostALife = false;
@@ -152,9 +160,10 @@ namespace BlazorInvaders.GameObjects
             var maxActive = _doubleShot ? 2 : 1;
             if (_shots.Count(s => !s.Remove) >= maxActive) return;
 
-            _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 13, _player.CurrentPosition.Y)));
+            var volley = _combo.StartVolley(_doubleShot ? 2 : 1);
+            _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 13, _player.CurrentPosition.Y)) { Volley = volley });
             if (_doubleShot)
-                _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 25, _player.CurrentPosition.Y)));
+                _shots.Add(new Shot(new Point(_player.CurrentPosition.X + 25, _player.CurrentPosition.Y)) { Volley = volley });
 
             _totalShotsFired++;
             _sounds |= SoundEffect.Shoot;
@@ -305,7 +314,7 @@ namespace BlazorInvaders.GameObjects
             foreach (var s in _shots.Where(_ => !_.Remove))
             {
                 s.Move();
-                if (s.CurrentPosition.Y <= 0) { s.Remove = true; continue; }
+                if (s.CurrentPosition.Y <= 0) { EndShot(s); continue; }
 
                 foreach (var bunker in _bunkers.Where(b => !b.Destroyed))
                 {
@@ -313,7 +322,7 @@ namespace BlazorInvaders.GameObjects
                             new Rectangle(s.CurrentPosition, s.Sprite.RenderSize)))
                     {
                         bunker.Hit();
-                        s.Remove = true;
+                        EndShot(s);
                         Raise(GameEventType.BunkerHit, s.CurrentPosition, s.Sprite.RenderSize, variant: bunker.Health);
                         break;
                     }
@@ -327,12 +336,13 @@ namespace BlazorInvaders.GameObjects
 
                 if (hit != null)
                 {
-                    s.Remove = true;
                     hit.HitTime = _gameTime.TotalTime;
-                    var points = GetAlienPoints(hit.Row);
+                    var points = GetAlienPoints(hit.Row) * _combo.Multiplier;
                     _points += points;
                     _sounds |= SoundEffect.AlienDeath;
                     Raise(GameEventType.AlienKilled, hit.CurrentPosition, hit.Sprite.RenderSize, points, hit.Row);
+                    RegisterHit(s);
+                    EndShot(s);
 
                     if (_random.Next(100) < 5)
                         _powerUps.Add(new PowerUp(hit.CurrentPosition));
@@ -347,13 +357,29 @@ namespace BlazorInvaders.GameObjects
 
                 if (_motherShip != null && !_motherShip.HasBeenHit && _motherShip.Collision(s))
                 {
+                    // Mothership keeps its authentic score table; the hit still counts for the combo
                     _motherShip.Score = GetMotherShipScore();
                     _points += _motherShip.Score;
-                    s.Remove = true;
                     _sounds |= SoundEffect.AlienDeath;
                     Raise(GameEventType.MotherShipKilled, _motherShip.CurrentPosition, _motherShip.Sprite.RenderSize, _motherShip.Score);
+                    RegisterHit(s);
+                    EndShot(s);
                 }
             }
+        }
+
+        private void RegisterHit(Shot s)
+        {
+            if (_combo.AddHit(s.Volley) && _player != null)
+                Raise(GameEventType.ComboUp, _player.CurrentPosition, _player.Sprite.RenderSize, _combo.Multiplier);
+        }
+
+        /// <summary>Removes a shot; safe to call twice when one shot hits two targets in a step.</summary>
+        private void EndShot(Shot s)
+        {
+            if (s.Remove) return;
+            s.Remove = true;
+            _combo.ShotEnded(s.Volley);
         }
 
         private void UpdateAliens()
@@ -453,6 +479,7 @@ namespace BlazorInvaders.GameObjects
                     _removeLifeBanner = _gameTime.TotalTime;
                     _sounds |= SoundEffect.PlayerDeath;
                     Raise(GameEventType.PlayerHit, _player.CurrentPosition, _player.Sprite.RenderSize);
+                    _combo.Break();
                     if (_lives < 1)
                         EndGame();
                 }

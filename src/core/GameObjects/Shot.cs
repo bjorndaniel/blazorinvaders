@@ -13,6 +13,7 @@ namespace BlazorInvaders.GameObjects
         }
         public Sprite Sprite => _beam;
         public bool Remove { get; set; }
+        public Volley Volley { get; init; } = new();
         public Point CurrentPosition => _currentPosition;
         public void Move() =>
             _currentPosition = new Point(_currentPosition.X, _currentPosition.Y - 20);

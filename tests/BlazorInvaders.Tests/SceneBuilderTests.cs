@@ -146,6 +146,18 @@ public class SceneBuilderTests
         Assert.True(builder.Build(engine, 0).Paused);
     }
 
+    [Fact]
+    public void Hud_ShowsComboOnlyAboveX1()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        var builder = new SceneBuilder();
+
+        Assert.DoesNotContain(Texts(builder.Build(engine, 0)), t => t.StartsWith("COMBO"));
+        engine.ComboTracker.Count = 10;
+        Assert.Contains("COMBO x3", Texts(builder.Build(engine, 0)));
+    }
+
     private static void RunMs(GameEngine engine, int ms)
     {
         for (var t = GameEngine.StepMs; t <= ms; t += GameEngine.StepMs)

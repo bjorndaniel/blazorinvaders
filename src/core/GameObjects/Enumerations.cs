@@ -37,6 +37,7 @@
         PlayerHit        = 2,
         MotherShipKilled = 3,
         BunkerHit        = 4,
+        ComboUp          = 5,
     }
 
     [Flags]
