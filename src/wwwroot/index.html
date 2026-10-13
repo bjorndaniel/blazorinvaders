@@ -7,6 +7,9 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>BlazorInvaders</title>
     <base href="/" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
     <link href="css/bootstrap/bootstrap.min.css"
         rel="stylesheet" />
     <link href="css/app.css"
@@ -14,7 +17,7 @@
     <link href="css/loader.css"
         rel="stylesheet" />
     <link href="BlazorInvaders.styles.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="preload" href="fonts/orbitron-latin.woff2" as="font" type="font/woff2" crossorigin />
 </head>
 
 <body>
@@ -51,6 +54,7 @@
         <a class="dismiss">🗙</a>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
+    <script>navigator.serviceWorker?.register('service-worker.js', { updateViaCache: 'none' });</script>
 </body>
 
 </html>

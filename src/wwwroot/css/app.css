@@ -1,4 +1,14 @@
 ﻿@import url("open-iconic/font/css/open-iconic-bootstrap.min.css");
+
+/* Self-hosted (SIL OFL, see fonts/OFL.txt) so the game renders correctly offline */
+@font-face {
+    font-family: 'Orbitron';
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+    src: url('../fonts/orbitron-latin.woff2') format('woff2');
+}
+
 /*
  * Globals
  */
@@ -133,10 +143,11 @@ body {
     }
 }
 
+/* Wide enough for the 870px game at full size */
 @media (min-width: 60em) {
     .cover-container {
-        max-width: 55em;
-        min-width: 55em;
+        max-width: 60em;
+        min-width: 60em;
     }
 
     .masthead-brand {
@@ -190,10 +201,114 @@ body {
     top: 0.5rem;
 }
 
+/*
+ * Game: the canvas keeps its 870x500 shape and scales down to fit the screen
+ */
+.game-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
 .game-canvas {
-    min-height: 500px;
-    min-width: 800px;
+    width: min(870px, 100%);
+    aspect-ratio: 87 / 50;
     background: #000;
+    outline: none;
+    touch-action: none;
+}
+
+.game-canvas canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.touch-pad {
+    display: none;
+}
+
+.touch-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.touch-btn.active {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.touch-fire {
+    width: 84px;
+    height: 84px;
+    font-size: 16px;
+    border-color: rgba(255, 80, 80, 0.8);
+}
+
+.touch-small {
+    width: 44px;
+    height: 44px;
+    font-size: 14px;
+}
+
+/* Touch screens: buttons beside the playfield in landscape, below it in portrait */
+@media (pointer: coarse) {
+    .cover-container {
+        min-width: 0;
+        max-width: none;
+        padding: 0.5rem !important;
+    }
+
+    .touch-pad {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .touch-actions {
+        flex-direction: column;
+    }
+
+    .game-canvas {
+        width: min(870px, calc(100vw - 280px), calc((100vh - 60px) * 87 / 50));
+        width: min(870px, calc(100vw - 280px), calc((100dvh - 60px) * 87 / 50));
+    }
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+    .game-area {
+        flex-wrap: wrap;
+        justify-content: space-between;
+        row-gap: 16px;
+    }
+
+    .game-canvas {
+        order: -1;
+        width: 100%;
+    }
+
+    .touch-actions {
+        flex-direction: row-reverse;
+    }
+}
+
+/* Short screens (phones in landscape): drop the title and footer to give the game the height */
+@media (pointer: coarse) and (max-height: 600px) {
+    .page-title,
+    .mastfoot {
+        display: none;
+    }
 }
 
 .bm-title {

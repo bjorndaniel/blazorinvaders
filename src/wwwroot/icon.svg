@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" shape-rendering="crispEdges">
+  <!-- Pixel-art crab invader, kept inside the maskable icon safe zone -->
+  <rect width="512" height="512" fill="#000"/>
+  <g fill="#78ff3c">
+    <rect x="158" y="144" width="28" height="28"/>
+    <rect x="326" y="144" width="28" height="28"/>
+    <rect x="186" y="172" width="28" height="28"/>
+    <rect x="298" y="172" width="28" height="28"/>
+    <rect x="158" y="200" width="196" height="28"/>
+    <rect x="130" y="228" width="56" height="28"/>
+    <rect x="214" y="228" width="84" height="28"/>
+    <rect x="326" y="228" width="56" height="28"/>
+    <rect x="102" y="256" width="308" height="28"/>
+    <rect x="102" y="284" width="28" height="28"/>
+    <rect x="158" y="284" width="196" height="28"/>
+    <rect x="382" y="284" width="28" height="28"/>
+    <rect x="102" y="312" width="28" height="28"/>
+    <rect x="158" y="312" width="28" height="28"/>
+    <rect x="326" y="312" width="28" height="28"/>
+    <rect x="382" y="312" width="28" height="28"/>
+    <rect x="186" y="340" width="56" height="28"/>
+    <rect x="270" y="340" width="56" height="28"/>
+  </g>
+</svg>

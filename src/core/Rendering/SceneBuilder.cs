@@ -53,6 +53,9 @@ namespace BlazorInvaders.Rendering
         private int _attractState;
         private float _attractStateStart;
 
+        /// <summary>Word on-screen instructions for the touch buttons instead of the keyboard.</summary>
+        public bool TouchControls { get; set; }
+
         public Scene Build(GameEngine engine, float timeStamp)
         {
             _cmds.Clear();
@@ -248,7 +251,7 @@ namespace BlazorInvaders.Rendering
         private void GameOverScreen(int w, int h)
         {
             CenteredText("GAME OVER", w, h / 2 - 30, 36, White);
-            CenteredText("Press space to start a new game", w, h / 2 + 20, 22, White);
+            CenteredText(TouchControls ? "Tap to start a new game" : "Press space to start a new game", w, h / 2 + 20, 22, White);
         }
 
         private void AttractScreen(GameEngine engine, float timeStamp)
@@ -286,6 +289,12 @@ namespace BlazorInvaders.Rendering
                         for (int i = 0; i < Math.Min(top.Count, 3); i++)
                             CenteredText($"{i + 1}.  {top[i].Name,-5} {top[i].Score:D5}", w, 180 + i * 45, 22, White);
                     }
+                    break;
+
+                case 2 when TouchControls:
+                    CenteredText("Use the arrow buttons to move, FIRE to shoot", w, 160, 26, White);
+                    CenteredText("Tap the screen to start", w, 220, 28, White);
+                    CenteredText("II to pause", w, 265, 18, "#888");
                     break;
 
                 default:

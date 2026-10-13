@@ -2,6 +2,7 @@
 @using BlazorInvaders.GameObjects
 @using BlazorInvaders.Rendering
 @using Microsoft.AspNetCore.Components.WebAssembly.Hosting
+@using System.Text.Json
 @inject IJSRuntime JsRuntime;
 @inject IConfiguration Config
 @inject HttpClient Http
@@ -9,7 +10,7 @@
 @inject IWebAssemblyHostEnvironment HostEnvironment
 @implements IAsyncDisposable
 
-<div class="row">
+<div class="row page-title">
     <div class="col text-center">
         <h2>Blazor Invaders - a Space Invaders implementation</h2>
     </div>
@@ -25,9 +26,19 @@
 </div>
 <div class="row justify-content-center">
     <div class="col text-center" id="canvas">
-        <div tabindex="0" @ref="_container" class="game-canvas" id="canvasContainer"
-             style="width:@(Width)px; height:@(Height)px">
-            <canvas @ref="_canvas" width="@Width" height="@Height"></canvas>
+        @* Touch pads are only shown on touch screens (see app.css); game.js wires up their data-* inputs *@
+        <div class="game-area" @ref="_gameArea">
+            <div class="touch-pad touch-move">
+                <button type="button" class="touch-btn" data-input="1" aria-label="Move left">&#9664;</button>
+                <button type="button" class="touch-btn" data-input="2" aria-label="Move right">&#9654;</button>
+            </div>
+            <div tabindex="0" @ref="_container" class="game-canvas" id="canvasContainer">
+                <canvas @ref="_canvas"></canvas>
+            </div>
+            <div class="touch-pad touch-actions">
+                <button type="button" class="touch-btn touch-fire" data-input="4" aria-label="Fire">FIRE</button>
+                <button type="button" class="touch-btn touch-small" data-press="16" aria-label="Pause">II</button>
+            </div>
         </div>
     </div>
 </div>
@@ -48,6 +59,7 @@
 
     readonly GameEngine _engine = new(Width, Height);
     readonly SceneBuilder _scenes = new();
+    ElementReference _gameArea;
     ElementReference _container;
     ElementReference _canvas;
     IJSObjectReference? _module;
@@ -70,7 +82,8 @@
 
         _engine.QualifiedForLeaderboard += OnQualifiedForLeaderboard;
         _dotNetRef = DotNetObjectReference.Create(this);
-        await _module.InvokeVoidAsync("start", _dotNetRef, _canvas, _container, Width, Height);
+        // Returns whether this is a touch screen, so on-screen hints can say "tap" instead of "press space"
+        _scenes.TouchControls = await _module.InvokeAsync<bool>("start", _dotNetRef, _canvas, _container, _gameArea, Width, Height);
         await _container.FocusAsync();
         StateHasChanged();
 
@@ -139,6 +152,8 @@
     {
         try
         {
+            // Scores saved while offline go first, so they show up in the board we fetch
+            await SendPendingScoresAsync();
             var scores = await Http.GetFromJsonAsync<List<HighScore>>($"{Config["FunctionsApi"]}/getleaderboard");
             if (scores != null)
                 _engine.SetLeaderboard(scores);
@@ -165,9 +180,8 @@
             score.Score = _engine.Points;
             if (_engine.Points >= _engine.HighScore)
                 _engine.HighScoreName = score.Name;
-            var response = await Http.PostAsJsonAsync($"{Config["FunctionsApi"]}/savehighscore", score);
-            if (!response.IsSuccessStatusCode)
-                Console.Error.WriteLine($"Saving high score failed: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
+            if (!await SendScoreAsync(score))
+                await QueueScoreAsync(score);
         }
         catch (Exception ex)
         {
@@ -181,4 +195,60 @@
                 await _container.FocusAsync();
         }
     }
+
+    /// <summary>Posts a score. Returns false if the API couldn't be reached, so it can be retried later.</summary>
+    private async Task<bool> SendScoreAsync(HighScore score)
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync($"{Config["FunctionsApi"]}/savehighscore", score);
+            // A rejected score would be rejected again, so only network failures are retried
+            if (!response.IsSuccessStatusCode)
+                Console.Error.WriteLine($"Saving high score failed: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
+            return true;
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"High score not sent, will retry later: {ex.Message}");
+            return false;
+        }
+    }
+
+    // Scores earned offline wait in localStorage until the API is reachable again
+    const string PendingScoresKey = "pendingScores";
+    const int MaxPendingScores = 10;
+
+    private async Task QueueScoreAsync(HighScore score)
+    {
+        var pending = await ReadPendingScoresAsync();
+        pending.Add(score);
+        await WritePendingScoresAsync(pending.TakeLast(MaxPendingScores).ToList());
+    }
+
+    private async Task SendPendingScoresAsync()
+    {
+        var pending = await ReadPendingScoresAsync();
+        if (pending.Count == 0) return;
+
+        var sent = 0;
+        while (sent < pending.Count && await SendScoreAsync(pending[sent]))
+            sent++;
+        await WritePendingScoresAsync(pending.Skip(sent).ToList());
+    }
+
+    private async Task<List<HighScore>> ReadPendingScoresAsync()
+    {
+        var json = await _module!.InvokeAsync<string?>("getItem", PendingScoresKey);
+        try
+        {
+            return string.IsNullOrEmpty(json) ? new() : JsonSerializer.Deserialize<List<HighScore>>(json) ?? new();
+        }
+        catch (JsonException)
+        {
+            return new();
+        }
+    }
+
+    private async Task WritePendingScoresAsync(List<HighScore> pending) =>
+        await _module!.InvokeVoidAsync("setItem", PendingScoresKey, JsonSerializer.Serialize(pending));
 }

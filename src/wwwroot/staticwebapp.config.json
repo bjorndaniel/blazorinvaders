@@ -6,7 +6,22 @@
       "/_framework/*",
       "/css/*",
       "/assets/*",
-      "*.{ico,png,svg,woff2,woff,ttf}"
+      "/fonts/*",
+      "/js/*",
+      "*.{ico,png,svg,woff2,woff,ttf,webmanifest}"
     ]
+  },
+  "routes": [
+    {
+      "route": "/service-worker.js",
+      "headers": { "cache-control": "no-cache" }
+    },
+    {
+      "route": "/service-worker-assets.js",
+      "headers": { "cache-control": "no-cache" }
+    }
+  ],
+  "mimeTypes": {
+    ".webmanifest": "application/manifest+json"
   }
 }

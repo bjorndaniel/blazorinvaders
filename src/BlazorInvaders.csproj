@@ -6,7 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- No culture-specific formatting needed; drops ICU data from the download -->
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Installable app with offline play; see wwwroot/service-worker.published.js -->
+    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="api/**;core/**" />

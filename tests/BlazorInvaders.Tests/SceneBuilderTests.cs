@@ -225,6 +225,22 @@ public class SceneBuilderTests
         Assert.Equal(new[] { "BOSS DOWN +1000" }, labels);
     }
 
+    [Theory]
+    [InlineData(false, "Press space to start")]
+    [InlineData(true, "Tap the screen to start")]
+    public void AttractInstructions_MatchTheControls(bool touch, string expected)
+    {
+        var engine = NewEngine();
+        var builder = new SceneBuilder { TouchControls = touch };
+
+        // The controls card is the third attract state, 4 s apart
+        builder.Build(engine, 1);
+        builder.Build(engine, 4002);
+        var scene = builder.Build(engine, 8003);
+
+        Assert.Contains(expected, Texts(scene));
+    }
+
     private static void RunMs(GameEngine engine, int ms)
     {
         for (var t = GameEngine.StepMs; t <= ms; t += GameEngine.StepMs)

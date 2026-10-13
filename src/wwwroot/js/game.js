@@ -26,19 +26,33 @@ let sheet = null;
 let starLayer = null;
 const tintedSheets = new Map();
 
-// Input: bits held right now, plus presses not yet delivered to .NET
-let held = 0;
-let pressed = 0;
-let inputElement = null;
+let viewWidth = 0;
+let viewHeight = 0;
 
-export async function start(dotnetRef, canvas, container, width, height) {
+// Input: keys held, touch buttons held (pointerId -> bit), and presses not yet delivered to .NET
+let keysHeld = 0;
+const touchesHeld = new Map();
+let pressed = 0;
+let listeners = [];
+
+/**
+ * Starts the frame loop drawing into canvas at a logical size of width x height.
+ * Keyboard input comes from container, touch buttons ([data-input] held, [data-press] tapped) from touchRoot.
+ * Returns true on touch screens, where the on-screen buttons are shown.
+ */
+export async function start(dotnetRef, canvas, container, touchRoot, width, height) {
     stop();
     const current = session;
-    listen(container);
+    const touch = matchMedia('(pointer: coarse)').matches;
+    listen(container, touchRoot);
 
-    canvas.width = width;
-    canvas.height = height;
+    // Render at device resolution so text and pixels stay sharp on high-DPI screens; CSS scales the element
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
     const context = canvas.getContext('2d');
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.imageSmoothingEnabled = false;
 
     const image = new Image();
     image.src = SPRITE_SHEET_URL;
@@ -46,15 +60,18 @@ export async function start(dotnetRef, canvas, container, width, height) {
     await Promise.all([image.decode(), document.fonts.load('16px Orbitron')]);
 
     // stop() may have been called (page left) while we were loading
-    if (current !== session) return;
+    if (current !== session) return touch;
 
     dotnet = dotnetRef;
     ctx = context;
+    viewWidth = width;
+    viewHeight = height;
     sheet = image;
     starLayer = createStarLayer(width, height);
     tintedSheets.clear();
     effects.reset();
     loopId = requestAnimationFrame(frame);
+    return touch;
 }
 
 export function stop() {
@@ -83,7 +100,8 @@ function frame(timeStamp) {
     frameBusy = true;
     const current = session;
     // A press shorter than a frame still counts once, even though the key is already up
-    const input = held | pressed;
+    let input = keysHeld | pressed;
+    for (const bit of touchesHeld.values()) input |= bit;
     pressed = 0;
     dotnet.invokeMethodAsync('Tick', timeStamp, input)
         .then(scene => {
@@ -95,28 +113,42 @@ function frame(timeStamp) {
         .finally(() => { if (current === session) frameBusy = false; });
 }
 
-function listen(element) {
-    inputElement = element;
-    element.addEventListener('keydown', onKeyDown);
-    element.addEventListener('keyup', onKeyUp);
+function listen(container, touchRoot) {
+    on(container, 'keydown', onKeyDown);
+    on(container, 'keyup', onKeyUp);
     // Focus moving away (e.g. to the high score dialog) means keyup events won't arrive
-    element.addEventListener('blur', releaseAll);
+    on(container, 'blur', () => { keysHeld = 0; });
+    // Tapping the playfield starts a game; a mouse click only focuses it
+    on(container, 'pointerdown', e => { if (e.pointerType !== 'mouse') pressed |= INPUT_START; });
+
+    for (const button of touchRoot.querySelectorAll('[data-input], [data-press]')) {
+        on(button, 'pointerdown', onButtonDown);
+        on(button, 'pointerup', onButtonUp);
+        on(button, 'pointercancel', onButtonUp);
+        on(button, 'lostpointercapture', onButtonUp);
+        on(button, 'contextmenu', e => e.preventDefault());
+    }
+}
+
+function on(element, type, handler) {
+    element.addEventListener(type, handler);
+    listeners.push([element, type, handler]);
 }
 
 function unlisten() {
-    if (!inputElement) return;
-    inputElement.removeEventListener('keydown', onKeyDown);
-    inputElement.removeEventListener('keyup', onKeyUp);
-    inputElement.removeEventListener('blur', releaseAll);
-    inputElement = null;
-    releaseAll();
+    for (const [element, type, handler] of listeners)
+        element.removeEventListener(type, handler);
+    listeners = [];
+    keysHeld = 0;
+    touchesHeld.clear();
+    pressed = 0;
 }
 
 function onKeyDown(e) {
     const bit = HELD_KEYS[e.code];
     if (bit) {
         e.preventDefault();
-        held |= bit;
+        keysHeld |= bit;
         if (!e.repeat) pressed |= bit | (bit === INPUT_FIRE ? INPUT_START : 0);
     } else if (PAUSE_KEYS.has(e.code)) {
         e.preventDefault();
@@ -126,20 +158,33 @@ function onKeyDown(e) {
 
 function onKeyUp(e) {
     const bit = HELD_KEYS[e.code];
-    if (bit) held &= ~bit;
+    if (bit) keysHeld &= ~bit;
 }
 
-function releaseAll() {
-    held = 0;
-    pressed = 0;
+// Each finger is tracked separately, so moving and firing at the same time works
+function onButtonDown(e) {
+    e.preventDefault();     // no focus change, text selection or emulated mouse events
+    const button = e.currentTarget;
+    button.setPointerCapture(e.pointerId);
+    button.classList.add('active');
+    const bit = Number(button.dataset.input ?? 0);
+    if (bit) {
+        touchesHeld.set(e.pointerId, bit);
+        pressed |= bit | (bit === INPUT_FIRE ? INPUT_START : 0);
+    }
+    pressed |= Number(button.dataset.press ?? 0);
+}
+
+function onButtonUp(e) {
+    touchesHeld.delete(e.pointerId);
+    e.currentTarget.classList.remove('active');
 }
 
 function draw(scene) {
     const { cmds, strings } = scene;
     effects.update(performance.now(), scene);
 
-    const { width, height } = ctx.canvas;
-    ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, viewWidth, viewHeight);
     effects.beginFrame(ctx);
     ctx.drawImage(starLayer, 0, 0);
 
