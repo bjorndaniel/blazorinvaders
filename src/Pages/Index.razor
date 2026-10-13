@@ -6,6 +6,7 @@
 @inject IConfiguration Config
 @inject HttpClient Http
 @inject IModalService Modal
+@implements IAsyncDisposable
 
 <div class="row">
     <div class="col text-center">
@@ -35,6 +36,7 @@
     BECanvasComponent _canvas = default!;
     ElementReference _spriteSheet;
     Game _game = default!;
+    DotNetObjectReference<Index>? _dotNetRef;
     bool _disableKeyboard = false;
     int _personalBest = 0;
     bool _prevGameOver = false;
@@ -49,10 +51,20 @@
 
             _game = new Game(870, 500, Config, Http, JsRuntime);
             await _game.Init(_canvas, _spriteSheet);
-            await JsRuntime.InvokeAsync<object>("initGame", DotNetObjectReference.Create(this), 870, 500);
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JsRuntime.InvokeVoidAsync("initGame", _dotNetRef, 870, 500);
             _game.NewHighScore += HighScoreHandler;
             StateHasChanged();
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Stop the JS frame loop before releasing the .NET reference it calls into
+        await JsRuntime.InvokeVoidAsync("stopGame");
+        if (_game != null)
+            _game.NewHighScore -= HighScoreHandler;
+        _dotNetRef?.Dispose();
     }
 
     [JSInvokable]
