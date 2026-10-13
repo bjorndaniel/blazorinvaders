@@ -17,6 +17,12 @@ namespace BlazorInvaders.GameObjects
         private List<PowerUp> _powerUps = new();
         private readonly List<(float x, float y, float brightness, int size)> _stars = new();
 
+        // Simulation runs in fixed 60 Hz steps regardless of display refresh rate
+        private const float StepMs = 1000f / 60f;
+        private const int MaxStepsPerFrame = 5;
+        private float _lastTimeStamp;
+        private float _stepAccumulator;
+
         private float _lastUpdate;
         private float _removeLifeBanner;
         private Direction _currentMovement;
@@ -143,6 +149,8 @@ namespace BlazorInvaders.GameObjects
             GameOver = false;
             _lostALife = false;
             _gameTime.TotalTime = time;
+            _lastTimeStamp = time;
+            _stepAccumulator = 0;
             _lastUpdate = time;
             _player = new Player(_width, _height);
             _points = 0;
@@ -189,18 +197,35 @@ namespace BlazorInvaders.GameObjects
 
         public void Update(float timeStamp)
         {
+            var elapsed = timeStamp - _lastTimeStamp;
+            _lastTimeStamp = timeStamp;
+
             if (!Started || Paused)
                 return;
 
-            _gameTime.TotalTime = timeStamp;
+            // Cap catch-up so a background tab doesn't fast-forward the game on return
+            _stepAccumulator = Math.Min(_stepAccumulator + Math.Max(elapsed, 0), StepMs * MaxStepsPerFrame);
+            while (_stepAccumulator >= StepMs && !GameOver)
+            {
+                _stepAccumulator -= StepMs;
+                Step();
+            }
+        }
 
-            if (_doubleShot && timeStamp > _doubleShotUntil)
+        private void Step()
+        {
+            // Game clock only advances while playing, so timers freeze during pause
+            _gameTime.TotalTime += StepMs;
+            var now = _gameTime.TotalTime;
+
+            if (_doubleShot && now > _doubleShotUntil)
                 _doubleShot = false;
 
             UpdateBombs();
             UpdateAliens();
             UpdateShots();
             UpdatePowerUps();
+            UpdateMotherShip();
 
             if (_aliens.All(_ => _.Destroyed))
             {
@@ -208,21 +233,43 @@ namespace BlazorInvaders.GameObjects
                 if (_lives == _livesAtWaveStart)
                 {
                     _points += 500;
-                    _perfectBonusUntil = timeStamp + 2500;
+                    _perfectBonusUntil = now + 2500;
                 }
 
                 _gameSpeed += 0.75;
                 _wave++;
-                _waveDisplayUntil = timeStamp + 2000;
+                _waveDisplayUntil = now + 2000;
                 _livesAtWaveStart = _lives;
                 _aliens = CreateAlienGrid();
                 _bunkers = CreateBunkers();
                 _lastAliveCount = 55;
                 _updateMarch = true;
             }
+        }
 
-            if (_motherShip == null && _random.Next(100) > 90)
-                _motherShip = new MotherShip(new Point(_width, 80));
+        private void UpdateMotherShip()
+        {
+            if (_motherShip == null)
+            {
+                if (_random.Next(100) > 90)
+                    _motherShip = new MotherShip(new Point(_width, 80));
+                return;
+            }
+
+            if (!_motherShip.HasBeenHit)
+                _motherShip.Move();
+
+            if (_motherShip.CurrentPosition.X < 0)
+            {
+                _motherShip = null;
+                return;
+            }
+
+            if (!_motherShip.HasBeenHit && _gameTime.TotalTime - _lastMotherShipPing > 500)
+            {
+                _lastMotherShipPing = _gameTime.TotalTime;
+                _playMotherShip = true;
+            }
         }
 
         public async ValueTask Render(float timeStamp = 0)
@@ -259,7 +306,7 @@ namespace BlazorInvaders.GameObjects
             if (Started && !GameOver && _gameTime.TotalTime <= _waveDisplayUntil)
                 await RenderWaveIndicator();
 
-            if (Started && !GameOver && timeStamp > 0 && timeStamp <= _perfectBonusUntil)
+            if (Started && !GameOver && _gameTime.TotalTime <= _perfectBonusUntil)
                 await RenderPerfectBonus();
 
             if (Paused)
@@ -696,32 +743,19 @@ namespace BlazorInvaders.GameObjects
 
             if (_motherShip != null)
             {
-                if (!_motherShip.HasBeenHit) _motherShip.Move();
-                if (_motherShip.CurrentPosition.X < 0)
-                {
-                    _motherShip = null;
-                }
-                else
-                {
-                    await _context.DrawImageAsync(_spriteSheet,
-                        _motherShip.Sprite.TopLeft.X, _motherShip.Sprite.TopLeft.Y,
-                        _motherShip.Sprite.Size.Width, _motherShip.Sprite.Size.Height,
-                        _motherShip.CurrentPosition.X, _motherShip.CurrentPosition.Y,
-                        _motherShip.Sprite.RenderSize.Width, _motherShip.Sprite.RenderSize.Height);
+                await _context.DrawImageAsync(_spriteSheet,
+                    _motherShip.Sprite.TopLeft.X, _motherShip.Sprite.TopLeft.Y,
+                    _motherShip.Sprite.Size.Width, _motherShip.Sprite.Size.Height,
+                    _motherShip.CurrentPosition.X, _motherShip.CurrentPosition.Y,
+                    _motherShip.Sprite.RenderSize.Width, _motherShip.Sprite.RenderSize.Height);
 
-                    if (_motherShip.HasBeenHit)
-                    {
-                        await _context.SetFillStyleAsync("#FFD700");
-                        await _context.SetFontAsync("14px Orbitron");
-                        await _context.FillTextAsync($"+{_motherShip.Score}",
-                            _motherShip.CurrentPosition.X, _motherShip.CurrentPosition.Y - 5);
-                        await _context.SetFillStyleAsync("white");
-                    }
-                    else if (_gameTime.TotalTime - _lastMotherShipPing > 500)
-                    {
-                        _lastMotherShipPing = _gameTime.TotalTime;
-                        _playMotherShip = true;
-                    }
+                if (_motherShip.HasBeenHit)
+                {
+                    await _context.SetFillStyleAsync("#FFD700");
+                    await _context.SetFontAsync("14px Orbitron");
+                    await _context.FillTextAsync($"+{_motherShip.Score}",
+                        _motherShip.CurrentPosition.X, _motherShip.CurrentPosition.Y - 5);
+                    await _context.SetFillStyleAsync("white");
                 }
             }
 
