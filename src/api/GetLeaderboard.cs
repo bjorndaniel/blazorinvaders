@@ -1,12 +1,13 @@
 using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Text.Json;
 
 namespace BlazorInvaders.Api;
 
-public class GetLeaderboard
+public class GetLeaderboard(ILogger<GetLeaderboard> logger)
 {
     [Function("getleaderboard")]
     public async Task<HttpResponseData> Run(
@@ -47,8 +48,9 @@ public class GetLeaderboard
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to load leaderboard");
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync(ex.Message);
+            await response.WriteStringAsync("Could not load leaderboard");
             return response;
         }
     }

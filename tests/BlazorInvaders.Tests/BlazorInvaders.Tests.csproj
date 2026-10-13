@@ -33,6 +33,8 @@
     <Compile Include="..\..\src\GameObjects\Player.cs" />
     <Compile Include="..\..\src\GameObjects\Shot.cs" />
     <Compile Include="..\..\src\GameObjects\Sprite.cs" />
+    <!-- API validation is dependency-free, so it can be compiled in directly too -->
+    <Compile Include="..\..\src\api\HighScoreValidator.cs" />
   </ItemGroup>
 
 </Project>

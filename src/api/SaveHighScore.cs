@@ -1,43 +1,27 @@
 using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Logging;
 using System.Net;
-using System.Text.Json;
 
 namespace BlazorInvaders.Api;
 
-public record HighScoreRequest(string Name, int Score);
-
-public class SaveHighScore
+public class SaveHighScore(ILogger<SaveHighScore> logger)
 {
     [Function("savehighscore")]
     public async Task<HttpResponseData> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req)
     {
-        HighScoreRequest? dto;
-        try
-        {
-            dto = await JsonSerializer.DeserializeAsync<HighScoreRequest>(req.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        }
-        catch
-        {
-            dto = null;
-        }
+        var body = await HighScoreValidator.ReadBoundedAsync(req.Body, HighScoreValidator.MaxBodyBytes);
+        if (body is null)
+            return await TextResponse(req, HttpStatusCode.RequestEntityTooLarge, "Request too large");
 
-        if (dto is null || string.IsNullOrEmpty(dto.Name))
-        {
-            var bad = req.CreateResponse(HttpStatusCode.BadRequest);
-            await bad.WriteStringAsync("Missing name or score");
-            return bad;
-        }
+        if (!HighScoreValidator.TryParse(body, out var dto, out var error))
+            return await TextResponse(req, HttpStatusCode.BadRequest, error);
 
         var connectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         if (string.IsNullOrEmpty(connectionString))
-        {
-            var err = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await err.WriteStringAsync("Storage not configured");
-            return err;
-        }
+            return await TextResponse(req, HttpStatusCode.InternalServerError, "Storage not configured");
 
         try
         {
@@ -52,15 +36,19 @@ public class SaveHighScore
             };
             await tableClient.AddEntityAsync(entity);
 
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteStringAsync("Saved high score");
-            return response;
+            return await TextResponse(req, HttpStatusCode.OK, "Saved high score");
         }
         catch (Exception ex)
         {
-            var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync(ex.Message);
-            return response;
+            logger.LogError(ex, "Failed to save high score");
+            return await TextResponse(req, HttpStatusCode.InternalServerError, "Could not save high score");
         }
+    }
+
+    private static async Task<HttpResponseData> TextResponse(HttpRequestData req, HttpStatusCode status, string message)
+    {
+        var response = req.CreateResponse(status);
+        await response.WriteStringAsync(message);
+        return response;
     }
 }

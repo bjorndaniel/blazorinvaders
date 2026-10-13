@@ -186,7 +186,7 @@ namespace BlazorInvaders.GameObjects
             MotherShipScoreTable[_totalShotsFired % MotherShipScoreTable.Length];
 
         private bool QualifiesForLeaderboard() =>
-            _topScores.Count < 10 || _points > _topScores[^1].Score;
+            _points > 0 && (_topScores.Count < 10 || _points > _topScores[^1].Score);
 
         private int GetAlienPoints(int row) => row switch
         {

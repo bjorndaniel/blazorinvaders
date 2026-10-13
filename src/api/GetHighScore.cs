@@ -2,11 +2,12 @@ using Azure;
 using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Logging;
 using System.Net;
 
 namespace BlazorInvaders.Api;
 
-public class GetHighScore
+public class GetHighScore(ILogger<GetHighScore> logger)
 {
     [Function("gethighscore")]
     public async Task<HttpResponseData> Run(
@@ -40,8 +41,9 @@ public class GetHighScore
         }
         catch (Exception ex)
         {
+            logger.LogError(ex, "Failed to load high score");
             var response = req.CreateResponse(HttpStatusCode.InternalServerError);
-            await response.WriteStringAsync(ex.Message);
+            await response.WriteStringAsync("Could not load high score");
             return response;
         }
     }

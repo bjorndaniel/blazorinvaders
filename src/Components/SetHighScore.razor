@@ -17,6 +17,12 @@
             <input class="initials" type="text" maxlength="1" @bind="Third" />
         </div>
     </div>
+    @if (_error != null)
+    {
+        <div class="row">
+            <div class="col text-danger">@_error</div>
+        </div>
+    }
     <br />
     <div class="row">
         <div class="col">
@@ -32,11 +38,24 @@
     private char First { get; set; }
     private char Second { get; set; }
     private char Third { get; set; }
+    private string? _error;
+
     async Task SaveHighScore()
     {
+        // Keep only A-Z / 0-9 (what the API accepts); blank inputs bind as '\0'
+        var name = new string(new[] { First, Second, Third }
+            .Select(char.ToUpperInvariant)
+            .Where(c => c is >= 'A' and <= 'Z' or >= '0' and <= '9')
+            .ToArray());
+        if (name.Length == 0)
+        {
+            _error = "Use letters A-Z or digits";
+            return;
+        }
+
         _highScore = new HighScore
         {
-            Name = $"{First}{Second}{Third}"
+            Name = name
         };
         await BlazoredModal.CloseAsync(ModalResult.Ok(_highScore));
     }
