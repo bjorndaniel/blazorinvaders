@@ -23,7 +23,7 @@
 </div>
 <div class="row justify-content-center">
     <div class="col text-center" id="canvas">
-        <div tabindex="0" @ref="_container" @onkeydown="KeyDown" @onkeydown:preventDefault class="game-canvas" id="canvasContainer"
+        <div tabindex="0" @ref="_container" class="game-canvas" id="canvasContainer"
              style="width:@(Width)px; height:@(Height)px">
             <canvas @ref="_canvas" width="@Width" height="@Height"></canvas>
         </div>
@@ -34,6 +34,11 @@
     const int Width = 870;
     const int Height = 500;
 
+    // Tick input bits: the low bits are the held GameInput controls, these are one-shot presses (see game.js)
+    const int HeldMask = 7;
+    const int StartPressed = 8;
+    const int PausePressed = 16;
+
     readonly GameEngine _engine = new(Width, Height);
     readonly SceneBuilder _scenes = new();
     ElementReference _container;
@@ -41,7 +46,6 @@
     IJSObjectReference? _module;
     DotNetObjectReference<Index>? _dotNetRef;
     bool _disableKeyboard = false;
-    bool _startRequested = false;
     bool _disposed = false;
     int _personalBest = 0;
     bool _prevGameOver = false;
@@ -59,7 +63,7 @@
 
         _engine.QualifiedForLeaderboard += OnQualifiedForLeaderboard;
         _dotNetRef = DotNetObjectReference.Create(this);
-        await _module.InvokeVoidAsync("start", _dotNetRef, _canvas, Width, Height);
+        await _module.InvokeVoidAsync("start", _dotNetRef, _canvas, _container, Width, Height);
         await _container.FocusAsync();
         StateHasChanged();
 
@@ -79,14 +83,20 @@
         _dotNetRef?.Dispose();
     }
 
+    /// <summary>Called by game.js once per animation frame with the controls held and pressed since the last frame.</summary>
     [JSInvokable]
-    public async ValueTask<Scene> Tick(float timeStamp)
+    public async ValueTask<Scene> Tick(float timeStamp, int input)
     {
-        if (_startRequested)
-        {
-            _startRequested = false;
-            _engine.Start(timeStamp);
-        }
+        if (_disableKeyboard)
+            input = 0;
+
+        var wasStarted = _engine.Started;
+        HandlePresses(input, timeStamp);
+        // The press that starts a game shouldn't also fire its first shot
+        var held = (GameInput)(input & HeldMask);
+        if (!wasStarted && _engine.Started)
+            held &= ~GameInput.Fire;
+        _engine.SetInput(held);
 
         _engine.Update(timeStamp);
         var scene = _scenes.Build(_engine, timeStamp);
@@ -109,29 +119,13 @@
         return scene;
     }
 
-    void KeyDown(KeyboardEventArgs e)
+    void HandlePresses(int input, float timeStamp)
     {
-        if (_disableKeyboard) return;
-
-        if (e.Code == "KeyP" || e.Code == "Escape")
-        {
+        if ((input & PausePressed) != 0 && _engine.Started)
             _engine.TogglePause();
-            return;
-        }
 
-        if (_engine.Paused) return;
-
-        if (e.Code == "ArrowLeft")
-            _engine.MovePlayer(Direction.Left);
-        if (e.Code == "ArrowRight")
-            _engine.MovePlayer(Direction.Right);
-        if (e.Code == "Space")
-        {
-            if (_engine.Started)
-                _engine.Fire();
-            else
-                _startRequested = true; // started on the next frame, with its timestamp
-        }
+        if ((input & StartPressed) != 0 && !_engine.Started)
+            _engine.Start(timeStamp);
     }
 
     private async Task LoadLeaderboardAsync()
@@ -175,6 +169,9 @@
         finally
         {
             _disableKeyboard = false;
+            // The dialog took focus; give it back so the keys work without clicking the game
+            if (!_disposed)
+                await _container.FocusAsync();
         }
     }
 }

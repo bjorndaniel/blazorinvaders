@@ -113,6 +113,82 @@ public class GameEngineTests
     }
 
     [Fact]
+    public void HoldingRight_MovesPlayerAtConstantSpeed()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        var startX = engine.Player!.CurrentPosition.X;
+
+        engine.SetInput(GameInput.Right);
+        Run(engine, 0, 500);
+
+        // 30 steps at 6 px
+        Assert.Equal(startX + 30 * GameEngine.PlayerSpeed, engine.Player.CurrentPosition.X);
+    }
+
+    [Fact]
+    public void HoldingDirection_StopsAtScreenEdge()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+
+        engine.SetInput(GameInput.Right);
+        var t = Run(engine, 0, 3000);
+        Assert.InRange(engine.Player!.CurrentPosition.X, Width - 50 - GameEngine.PlayerSpeed, Width - 50);
+
+        engine.SetInput(GameInput.Left);
+        Run(engine, t, 3000);
+        Assert.InRange(engine.Player.CurrentPosition.X, 10, 10 + GameEngine.PlayerSpeed);
+    }
+
+    [Fact]
+    public void ReleasingInput_StopsPlayer()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        engine.SetInput(GameInput.Left);
+        var t = Run(engine, 0, 200);
+        var x = engine.Player!.CurrentPosition.X;
+
+        engine.SetInput(GameInput.None);
+        Run(engine, t, 500);
+
+        Assert.Equal(x, engine.Player.CurrentPosition.X);
+    }
+
+    [Fact]
+    public void HoldingInput_WhilePaused_DoesNotMove()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        var x = engine.Player!.CurrentPosition.X;
+
+        engine.TogglePause();
+        engine.SetInput(GameInput.Right | GameInput.Fire);
+        Run(engine, 0, 1000);
+
+        Assert.Equal(x, engine.Player.CurrentPosition.X);
+        Assert.Empty(engine.Shots);
+    }
+
+    [Fact]
+    public void HoldingFire_FiresAgainOnceShotIsSpent()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+
+        engine.SetInput(GameInput.Fire);
+        var t = Run(engine, 0, 50);
+        var first = Assert.Single(engine.Shots);
+
+        // A shot is spent within half a second (top of screen or a hit)
+        Run(engine, t, 1000);
+
+        var current = Assert.Single(engine.Shots);
+        Assert.NotSame(first, current);
+    }
+
+    [Fact]
     public void Shot_HitsBottomAlienInColumn_ScoresTenPoints()
     {
         var engine = NewEngine();

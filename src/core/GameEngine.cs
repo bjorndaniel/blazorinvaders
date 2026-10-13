@@ -12,6 +12,9 @@ namespace BlazorInvaders.GameObjects
         public const float StepMs = 1000f / 60f;
         private const int MaxStepsPerFrame = 5;
 
+        // Pixels per step while a direction is held (360 px/s)
+        public const int PlayerSpeed = 6;
+
         // Deterministic mothership score table (authentic to original)
         private static readonly int[] MotherShipScoreTable =
             { 100, 50, 50, 100, 150, 100, 100, 50, 300, 100, 100, 100, 50, 150, 100 };
@@ -35,6 +38,7 @@ namespace BlazorInvaders.GameObjects
         private float _lastUpdate;
         private float _removeLifeBanner;
         private Direction _currentMovement;
+        private GameInput _input;
         private int _points;
         private int _lives;
         private double _gameSpeed;
@@ -137,7 +141,8 @@ namespace BlazorInvaders.GameObjects
 
         public void TogglePause() => Paused = !Paused;
 
-        public void MovePlayer(Direction direction) => _player?.Move(20, direction);
+        /// <summary>Sets the controls currently held; applied on every step until changed.</summary>
+        public void SetInput(GameInput input) => _input = input;
 
         public void Fire()
         {
@@ -192,6 +197,7 @@ namespace BlazorInvaders.GameObjects
             if (_doubleShot && now > _doubleShotUntil)
                 _doubleShot = false;
 
+            ApplyInput();
             UpdateBombs();
             UpdateAliens();
             UpdateShots();
@@ -221,6 +227,18 @@ namespace BlazorInvaders.GameObjects
                 _lastAliveCount = 55;
                 _marchCount = _lastAliveCount;
             }
+        }
+
+        private void ApplyInput()
+        {
+            if (_player == null) return;
+            if (_input.HasFlag(GameInput.Left))
+                _player.Move(PlayerSpeed, Direction.Left);
+            if (_input.HasFlag(GameInput.Right))
+                _player.Move(PlayerSpeed, Direction.Right);
+            // Holding fire shoots again as soon as Fire allows another shot
+            if (_input.HasFlag(GameInput.Fire))
+                Fire();
         }
 
         private void EndGame()

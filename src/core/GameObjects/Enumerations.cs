@@ -20,6 +20,16 @@
         Rolling,
     }
 
+    /// <summary>Controls held during a frame. Values must match the input bits in game.js.</summary>
+    [Flags]
+    public enum GameInput
+    {
+        None  = 0,
+        Left  = 1,
+        Right = 2,
+        Fire  = 4,
+    }
+
     [Flags]
     public enum SoundEffect
     {

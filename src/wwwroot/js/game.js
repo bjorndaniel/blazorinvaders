@@ -6,6 +6,10 @@
 const OP_SPRITE = 1, OP_RECT = 2, OP_TEXT = 3, OP_DIAMOND = 4;
 // Must match SoundEffect in Enumerations.cs
 const SOUND_SHOOT = 1, SOUND_ALIEN_DEATH = 2, SOUND_PLAYER_DEATH = 4, SOUND_MOTHERSHIP = 8, SOUND_STOP_MARCH = 16;
+// Held controls must match GameInput in Enumerations.cs; one-shot presses must match Index.razor
+const INPUT_LEFT = 1, INPUT_RIGHT = 2, INPUT_FIRE = 4, INPUT_START = 8, INPUT_PAUSE = 16;
+const HELD_KEYS = { ArrowLeft: INPUT_LEFT, ArrowRight: INPUT_RIGHT, Space: INPUT_FIRE };
+const PAUSE_KEYS = new Set(['KeyP', 'Escape']);
 
 const SPRITE_SHEET_URL = 'assets/sprites_cleaned.png';
 const TINT_ALPHA = 0.65;
@@ -19,9 +23,15 @@ let sheet = null;
 let starLayer = null;
 const tintedSheets = new Map();
 
-export async function start(dotnetRef, canvas, width, height) {
+// Input: bits held right now, plus presses not yet delivered to .NET
+let held = 0;
+let pressed = 0;
+let inputElement = null;
+
+export async function start(dotnetRef, canvas, container, width, height) {
     stop();
     const current = session;
+    listen(container);
 
     canvas.width = width;
     canvas.height = height;
@@ -50,6 +60,7 @@ export function stop() {
     frameBusy = false;
     dotnet = null;
     ctx = null;
+    unlisten();
     audio.stopMarch();
 }
 
@@ -67,7 +78,10 @@ function frame(timeStamp) {
     if (frameBusy || !dotnet) return;
     frameBusy = true;
     const current = session;
-    dotnet.invokeMethodAsync('Tick', timeStamp)
+    // A press shorter than a frame still counts once, even though the key is already up
+    const input = held | pressed;
+    pressed = 0;
+    dotnet.invokeMethodAsync('Tick', timeStamp, input)
         .then(scene => {
             if (current !== session) return;
             draw(scene);
@@ -75,6 +89,45 @@ function frame(timeStamp) {
         })
         .catch(e => console.error(e))
         .finally(() => { if (current === session) frameBusy = false; });
+}
+
+function listen(element) {
+    inputElement = element;
+    element.addEventListener('keydown', onKeyDown);
+    element.addEventListener('keyup', onKeyUp);
+    // Focus moving away (e.g. to the high score dialog) means keyup events won't arrive
+    element.addEventListener('blur', releaseAll);
+}
+
+function unlisten() {
+    if (!inputElement) return;
+    inputElement.removeEventListener('keydown', onKeyDown);
+    inputElement.removeEventListener('keyup', onKeyUp);
+    inputElement.removeEventListener('blur', releaseAll);
+    inputElement = null;
+    releaseAll();
+}
+
+function onKeyDown(e) {
+    const bit = HELD_KEYS[e.code];
+    if (bit) {
+        e.preventDefault();
+        held |= bit;
+        if (!e.repeat) pressed |= bit | (bit === INPUT_FIRE ? INPUT_START : 0);
+    } else if (PAUSE_KEYS.has(e.code)) {
+        e.preventDefault();
+        if (!e.repeat) pressed |= INPUT_PAUSE;
+    }
+}
+
+function onKeyUp(e) {
+    const bit = HELD_KEYS[e.code];
+    if (bit) held &= ~bit;
+}
+
+function releaseAll() {
+    held = 0;
+    pressed = 0;
 }
 
 function draw({ cmds, strings }) {
