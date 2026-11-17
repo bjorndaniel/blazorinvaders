@@ -1,0 +1,2 @@
+# DevAgents: parallel branches each add a tracker row
+docs/work/TRACKER.md merge=union

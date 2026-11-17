@@ -351,3 +351,8 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+
+# DevAgents: worktrees and dispatch scratch files (work records are committed)
+.work/
+.devagents/runs/
+.devagents/local.json
