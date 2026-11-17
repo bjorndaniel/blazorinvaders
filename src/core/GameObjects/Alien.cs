@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 
 namespace BlazorInvaders.GameObjects
@@ -10,7 +10,7 @@ namespace BlazorInvaders.GameObjects
         Sprite _current;
         Sprite _explosion;
         bool _isMoved;
-        
+
         public Alien(AlienType type, Point startPosition, int column, int row)
         {
             CurrentPosition = startPosition;
@@ -65,5 +65,4 @@ namespace BlazorInvaders.GameObjects
             return HasBeenHit;
         }
     }
-} 
-  
+}

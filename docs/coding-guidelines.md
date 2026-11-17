@@ -1,28 +1,28 @@
 # Coding guidelines: BlazorInvaders
 
-**Last updated:** 2026-11-17, by CHORE-004
+**Last updated:** 2026-11-17, by CHORE-009
 
 ## Tools
 | Language | Tool | Config | Check command (read-only) |
 |----------|------|--------|---------------------------|
 | C# | Compiler, with nullable reference types (as warnings) and implicit usings | `<Nullable>enable</Nullable>` in all four `.csproj`; SDK in `global.json` | `dotnet build src/BlazorInvaders.csproj --nologo` and `dotnet build src/api/BlazorInvaders.Api.csproj --nologo` |
 | C# | xUnit tests | `tests/BlazorInvaders.Tests` | `dotnet test tests/BlazorInvaders.Tests --nologo` |
-| C# | IDE code style: `_camelCase` private fields, expression-bodied methods and properties | `src/.editorconfig` (severity `suggestion`, does not cover `tests/`) | none (the build and CI do not check it) |
+| C# | `dotnet format` (whitespace, charset; IDE style and naming at severity `suggestion`) | `.editorconfig` (root, covers `src/` and `tests/`) | `dotnet format src/BlazorInvaders.sln --verify-no-changes` |
 | JS, Razor markup | none | - | - |
 
-CI (`.github/workflows/deploy.yml`) fails only on build errors and failing tests.
+CI (`.github/workflows/deploy.yml`) fails on formatting drift, build errors and failing tests.
 
 | ID | Rule | Level | Source |
 |----|------|-------|--------|
 | CG70 | A change builds with no new compiler warnings, nullable warnings included. | must | csproj `Nullable`; proposal |
 | CG71 | A warning or rule is never switched off (`#pragma warning disable`, `[SuppressMessage]`, `<NoWarn>`) without a comment saying why. | must | template; the code has none today |
-| CG72 | C# uses 4-space indents and puts braces on their own line (Allman). JS uses 4 spaces, single quotes, semicolons and `const`/`let`, never `var`. | should | code: `src/core/GameEngine.cs`, `src/wwwroot/js/game.js` |
-| CG73 | New files are UTF-8 without a BOM. A change does not re-encode existing files. | should | code: newer files have no BOM |
+| CG72 | C# uses 4-space indents and puts braces on their own line (Allman). JS uses 4 spaces, single quotes, semicolons and `const`/`let`, never `var`. | should | `.editorconfig`; code: `src/core/GameEngine.cs`, `src/wwwroot/js/game.js` |
+| CG73 | New files are UTF-8 without a BOM, except `src/BlazorInvaders.sln`, which keeps its BOM as Visual Studio writes it. `dotnet format` checks the C# encoding; CHORE-009 removed the existing BOMs once. A change does not re-encode files otherwise. | should | `.editorconfig`; code: no BOM in `src/` |
 
 ## Naming
 | ID | Rule | Level | Source |
 |----|------|-------|--------|
-| CG1 | Types, members, constants and static readonly fields are PascalCase. Private fields are `_camelCase`. Locals and parameters are camelCase. | should | user (D5); `src/.editorconfig`; code: `GameEngine.cs` |
+| CG1 | Types, members, constants and static readonly fields are PascalCase. Private fields are `_camelCase`. Locals and parameters are camelCase. | should | user (D5); `.editorconfig`; code: `GameEngine.cs` |
 | CG2 | Async methods end in `Async`. The exceptions are a Function's `Run` and `[JSInvokable]` callbacks (e.g. `Tick`), whose names are a contract with the runtime or with JS. | should | code: `Index.razor`, `HighScoreValidator.ReadBoundedAsync` |
 | CG3 | A `[Function("...")]` name is the public URL. It is lowercase, and it is never renamed unless the client changes in the same item. | must | code: `src/api/GetLeaderboard.cs` |
 | CG4 | Use the existing domain words: `MotherShip`, wave, volley, combo, multiplier, daily challenge, modifier, partition. Millisecond durations and timestamps are `float` and named `...Ms`. Deadlines are named `...Until`. | should | code: `GameEngine.cs` (`StepMs`, `_powerUpUntil`) |
@@ -89,7 +89,7 @@ CI (`.github/workflows/deploy.yml`) fails only on build errors and failing tests
 
 ## Open questions
 - CG60: most public members in `src/core` have no `<summary>` today (about 47 summaries for about 190 public declarations; `Alien.cs`, `Player.cs`, `MotherShip.cs` and `Sprite.cs` have none). As written, CG60 applies to the members a change adds or changes. Whether the rest should be filled in by a separate CHORE is still open.
-- `docs/architecture.md` A6 says `src/.editorconfig` sets the `Async` suffix. The file defines the `end_in_async` style, but no naming rule uses it, so the suffix is not configured. A6 should be corrected when the `.editorconfig` follow-up (D7) lands.
 
 ## Revisions
 - 2026-11-17 CHORE-004: first version, from the proposal and the user's decisions D1-D8.
+- 2026-11-17 CHORE-009: Tools row, CI sentence, CG1, CG72 and CG73 updated for the root `.editorconfig` and the CI format check; A6 Open question resolved.

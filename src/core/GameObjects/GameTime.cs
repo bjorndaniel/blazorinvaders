@@ -1,4 +1,4 @@
-﻿namespace BlazorInvaders.GameObjects
+namespace BlazorInvaders.GameObjects
 {
     public class GameTime
     {

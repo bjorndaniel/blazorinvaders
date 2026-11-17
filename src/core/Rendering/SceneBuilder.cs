@@ -64,12 +64,12 @@ namespace BlazorInvaders.Rendering
 
         public static string Describe(DailyModifier modifier) => modifier switch
         {
-            DailyModifier.NoBunkers   => "NO BUNKERS",
-            DailyModifier.Speedrun    => "FAST START",
+            DailyModifier.NoBunkers => "NO BUNKERS",
+            DailyModifier.Speedrun => "FAST START",
             DailyModifier.ShieldStart => "SHIELD START",
-            DailyModifier.BossRush    => "BOSS EVERY 3RD WAVE",
-            DailyModifier.Glass       => "ONE LIFE, DOUBLE POINTS",
-            _                         => "NO MODIFIER",
+            DailyModifier.BossRush => "BOSS EVERY 3RD WAVE",
+            DailyModifier.Glass => "ONE LIFE, DOUBLE POINTS",
+            _ => "NO MODIFIER",
         };
 
         private static string FormatDate(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

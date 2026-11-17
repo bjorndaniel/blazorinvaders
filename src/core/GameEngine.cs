@@ -126,9 +126,9 @@ namespace BlazorInvaders.GameObjects
         /// <summary>Whether a power-up is in effect. Extra life is instant, so never active.</summary>
         public bool IsActive(PowerUpType type) => type switch
         {
-            PowerUpType.Shield    => _shield,
+            PowerUpType.Shield => _shield,
             PowerUpType.ExtraLife => false,
-            _                     => Time < _powerUpUntil[(int)type],
+            _ => Time < _powerUpUntil[(int)type],
         };
 
         /// <summary>Time left on a timed power-up in ms, or 0.</summary>
@@ -438,9 +438,9 @@ namespace BlazorInvaders.GameObjects
 
         private static int GetAlienPoints(int row) => row switch
         {
-            0      => 30,
+            0 => 30,
             1 or 2 => 20,
-            _      => 10,
+            _ => 10,
         };
 
         private void UpdateShots()

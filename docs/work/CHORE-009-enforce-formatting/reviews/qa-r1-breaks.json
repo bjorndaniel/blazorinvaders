@@ -1,0 +1,14 @@
+{ "test": "dotnet format src/BlazorInvaders.sln --verify-no-changes",
+  "breaks": [
+    { "id": "B1", "description": "AC2/AC3 api project covered: double space inside a statement", "file": "src/api/SaveHighScore.cs",
+      "find": "return await TextResponse(req, HttpStatusCode.RequestEntityTooLarge", "replace": "return  await TextResponse(req, HttpStatusCode.RequestEntityTooLarge" },
+    { "id": "B2", "description": "AC2/AC3 tests project covered: spaces inside parentheses", "file": "tests/BlazorInvaders.Tests/ComboTrackerTests.cs",
+      "find": "private static void Hit(ComboTracker combo)", "replace": "private static void Hit( ComboTracker combo )" },
+    { "id": "B3", "description": "AC1/AC3 charset: re-add a BOM to Enumerations.cs", "file": "src/core/GameObjects/Enumerations.cs",
+      "find": "namespace BlazorInvaders.GameObjects", "replace": "\ufeffnamespace BlazorInvaders.GameObjects" },
+    { "id": "B4", "description": "AC1 indentation: tab indent in GameEngine.cs", "file": "src/core/GameEngine.cs",
+      "find": "        public const float StepMs = 1000f / 60f;", "replace": "\t\tpublic const float StepMs = 1000f / 60f;" },
+    { "id": "B5", "description": "AC1 Async rule disabled (severity none); the AC1 command must notice", "file": ".editorconfig",
+      "find": "async_methods_end_in_async.severity          = suggestion", "replace": "async_methods_end_in_async.severity          = none",
+      "test": "node C:/Users/elici/AppData/Local/Temp/claude/abad4d2d2f6bcd2d/41501319-ac2a-40b7-9c4d-6a53fd059269/scratchpad/qa009/check-async.mjs" }
+  ] }

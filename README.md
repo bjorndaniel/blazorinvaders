@@ -89,6 +89,13 @@ The leaderboard is stored in the `HighScores` table, which is created on first u
 dotnet test tests/BlazorInvaders.Tests
 ```
 
+CI also checks formatting. Run this to check, and the same command without `--verify-no-changes` to fix:
+
+```bash
+dotnet format src/BlazorInvaders.sln --verify-no-changes
+dotnet format src/BlazorInvaders.sln
+```
+
 ## Tech stack
 
 | Layer | Technology |

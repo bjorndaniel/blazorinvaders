@@ -28,9 +28,9 @@ namespace BlazorInvaders.GameObjects
             _phase += 0.4f;
             var xOffset = _type switch
             {
-                BombType.Zigzag  => (int)(Math.Sin(_phase) * 8),
+                BombType.Zigzag => (int)(Math.Sin(_phase) * 8),
                 BombType.Rolling => (int)(Math.Cos(_phase * 0.7f) * 5),
-                _                => 0
+                _ => 0
             };
             _currentPosition = new Point(_currentPosition.X + xOffset + _dx, _currentPosition.Y + 10);
         }
