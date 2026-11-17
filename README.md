@@ -38,7 +38,7 @@ The game will be available at `https://localhost:5001`. The leaderboard API call
 
 ### Running the API locally
 
-**Prerequisites:** Azure Functions Core Tools v4, .NET 10 SDK (builds the API too), .NET 9 runtime, [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) (`npm install -g azurite`, or the copy bundled with Visual Studio)
+**Prerequisites:** Azure Functions Core Tools v4, .NET 10 SDK (builds the API too), [Azurite](https://learn.microsoft.com/azure/storage/common/storage-use-azurite) (`npm install -g azurite`, or the copy bundled with Visual Studio)
 
 Both config files below are gitignored, so create them once:
 
@@ -97,7 +97,7 @@ dotnet test tests/BlazorInvaders.Tests
 | Game logic | `src/core` class library (engine + scene description, unit-tested) |
 | Canvas rendering | JS module (`wwwroot/js/game.js`), one interop call per frame |
 | Audio | Web Audio API (JS interop) |
-| Backend | Azure Functions (isolated worker, .NET 9) |
+| Backend | Azure Functions (isolated worker, .NET 10) |
 | Storage | Azure Table Storage |
 | Hosting | Azure Static Web Apps (Free tier) |
 | Font | Orbitron (Google Fonts) |

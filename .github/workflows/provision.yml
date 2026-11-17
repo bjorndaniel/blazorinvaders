@@ -80,7 +80,7 @@ jobs:
             --storage-account "${{ inputs.storage_name }}" \
             --consumption-plan-location "${{ inputs.location }}" \
             --runtime dotnet-isolated \
-            --runtime-version 9 \
+            --runtime-version 10 \
             --functions-version 4 \
             --os-type Windows
 
