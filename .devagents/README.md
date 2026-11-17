@@ -1,7 +1,7 @@
 # DevAgents in this repository
 
-This repository has a team of AI agents led by a PM, Maya. You describe a
-feature or a bug, and Maya plans it with the team, shows you the plan for
+This repository has a team of AI agents led by a PM, Nishikado. You describe a
+feature or a bug, and Nishikado plans it with the team, shows you the plan for
 approval, has it built, tested and reviewed, and commits it on a branch. Nothing
 is pushed.
 
@@ -17,7 +17,7 @@ install overwrites them. Change `.devagents/config.json` instead (see below).
 | Copilot CLI | `copilot --agent pm`, or `copilot --agent pm --model auto --auto-tier balance` if the Copilot models are `auto` |
 | OpenAI Codex | `$devagents <what you want>`, e.g. `$devagents add rate limiting to the login endpoint` |
 
-Then describe the work: one item or several. You can ask Maya *"what's in
+Then describe the work: one item or several. You can ask Nishikado *"what's in
 progress?"*, *"status of FEAT-003?"* or *"what has the team cost so far?"* at any
 time.
 
@@ -37,14 +37,14 @@ could go wrong, and what stops it). Plans and security reviews refer to its
 entries by ID, and a change that alters the model updates the document in the
 same item.
 
-If the file is missing, Maya offers to create it at the start of a session:
-you answer a few questions about users, data and systems, Vera
+If the file is missing, Nishikado offers to create it at the start of a session:
+you answer a few questions about users, data and systems, Bunker
 drafts it from the code and your answers, and you approve it. It is committed on
 its own branch for you to merge. If the team already keeps a threat model
 elsewhere, set `securityModel` to its path instead (see below).
 
 Skip any of these setup offers (the security model, architecture, coding or UX
-guidelines, the app preview, quality tools) and Maya records it
+guidelines, the app preview, quality tools) and Nishikado records it
 (`node .devagents/devagents.mjs decline <setup>`, saved as `declined` in
 `.devagents/config.json`), so no later session offers it again.
 `decline --undo <setup>` brings an offer back.
@@ -56,11 +56,11 @@ the code follows, each choice with an ID. Plans name the choices they build on,
 and a plan that needs a new framework or a different pattern says so, for you to
 approve; the reviewers check plans and code against it.
 
-If the file is missing, and first of all in a new project, Maya offers to
-settle it: Theo proposes a choice per area, based on what the code
-already uses or, for a new project, a mainstream fit for what it is. Maya
+If the file is missing, and first of all in a new project, Nishikado offers to
+settle it: Mothership proposes a choice per area, based on what the code
+already uses or, for a new project, a mainstream fit for what it is. Nishikado
 asks you one area at a time, the suggestion first, and you change any of them.
-Theo then writes the document, committed on its own branch for you to
+Mothership then writes the document, committed on its own branch for you to
 merge. If the team already keeps one, set `architecture` to its path instead.
 
 ## Coding guidelines
@@ -69,17 +69,17 @@ merge. If the team already keeps one, set `architecture` to its path instead.
 formatter, linter and type checker enforce: naming, structure, errors and
 logging, data and state, dependencies, tests and comments, each rule with an ID
 (`CG1`, ...) and a level. Plans name the rules that apply, and
-Omar checks every diff against them, so the code stays
+Saucer checks every diff against them, so the code stays
 consistent from item to item: breaking a `must` rule without the plan saying so
 sends the work back for a fix, a `should` slip is noted and fixed when the work
 goes back anyway, and a new convention updates the document.
 
 If the file is missing (in a new project, right after the architecture),
-Maya offers to create it. Omar proposes rules from
+Nishikado offers to create it. Saucer proposes rules from
 what the project already has, in whatever language: its formatter, linter,
 type-checker and analyzer configs and the code itself, with where it is
-inconsistent. Maya questions you on it, the inconsistencies first and
-each rule's level, and Omar writes the document from your
+inconsistent. Nishikado questions you on it, the inconsistencies first and
+each rule's level, and Saucer writes the document from your
 answers, committed on its own branch for you to merge. If the team already
 keeps a style or contribution guide, set `codingGuidelines` to its path instead.
 
@@ -87,19 +87,19 @@ keeps a style or contribution guide, set `codingGuidelines` to its path instead.
 
 Every plan says whether the item is UI-facing: whether it changes anything a
 person sees or operates. A UI-facing item gets a UX review by
-Nora, against, in this order: `docs/ux-guidelines.md` and the design
+Pixel, against, in this order: `docs/ux-guidelines.md` and the design
 documents it names; the project's other design documents (a design system, a
 style or brand guide); the UI as it is; and the team's default UI rules,
 [`ux-defaults.md`](ux-defaults.md) (from
 [praeclarum/ui.md](https://github.com/praeclarum/ui.md)).
 
-If the guidelines are missing and the project has a UI, Maya offers to
+If the guidelines are missing and the project has a UI, Nishikado offers to
 create them: you point to the design documents you have, answer a few questions
 (your users and their tasks, the look, the component library, accessibility,
-language), Nora drafts the document, and you approve it. If the
+language), Pixel drafts the document, and you approve it. If the
 team already keeps such a guide, set `uxGuidelines` to its path instead.
 
-Nora looks at the running app, not only the code, through the
+Pixel looks at the running app, not only the code, through the
 [Playwright MCP server](https://github.com/microsoft/playwright-mcp). Set it up
 once, and commit what it changes:
 
@@ -136,21 +136,21 @@ prompt files, MCP servers (`.mcp.json`, `.github/mcp.json`, `.vscode/mcp.json`,
 `.codex/config.toml`) and scanners such as semgrep or gitleaks.
 `node .devagents/devagents.mjs helpers` lists them.
 
-- **You decide who uses each one.** The first time Maya starts, it asks with
+- **You decide who uses each one.** The first time Nishikado starts, it asks with
   the team's names, suggesting the team members each helper would help; later,
   whenever new ones turn up. Your answer is saved under `helpers` in
   `.devagents/config.json`, and each team member's prompt lists its own.
 - **Skills, prompts, MCP servers and tools** a team member uses itself. **Agents**
-  it asks through Maya, and gets the answer as a file in the item folder.
+  it asks through Nishikado, and gets the answer as a file in the item folder.
 - **MCP servers that can write** (issues, comments, data): give the reviewers
-  only their reading tools, one by one (`mcp:<server>/<tool>`); Maya
+  only their reading tools, one by one (`mcp:<server>/<tool>`); Nishikado
   proposes which. A helper never lifts a team member's limits, but for a whole
   server only the reviewers' instructions hold its writing tools back.
-- A team member that finds another useful one says so, and Maya asks you.
+- A team member that finds another useful one says so, and Nishikado asks you.
 
 ## Notifications
 
-Maya can tell you on Slack, Teams or any webhook when an item needs your
+Nishikado can tell you on Slack, Teams or any webhook when an item needs your
 input, a plan is ready for approval, something is blocked, or an item is done.
 You answer in the session as usual, or from the Claude app through Claude Code's
 Remote Control. Each developer sets up their own channels; the webhook URLs stay
@@ -260,7 +260,7 @@ node .devagents/devagents.mjs usage FEAT-003-account-lockout
 node .devagents/devagents.mjs estimate FEAT-003-account-lockout   # ballpark for an item, from its plan
 ```
 
-With every plan, Maya shows an estimate: the expected tokens and cost, and a
+With every plan, Nishikado shows an estimate: the expected tokens and cost, and a
 range from one round to the round limit. It is a ballpark from the `estimates`
 settings; compare it with what `report` shows and tune them.
 

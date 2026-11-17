@@ -5,7 +5,7 @@ This repository uses the DevAgents multi-agent workflow: a PM takes requests fro
 the user and runs them through planning, plan review, implementation, testing,
 code review, security review and, for a user interface, UX review. The process is defined in `.devagents/WORKFLOW.md`.
 
-- The team: Omar (Code Reviewer), Kai (Implementer), Iris (Plan Reviewer), Theo (Planner), Maya (PM), Quinn (QA Reviewer), Vera (Security Reviewer), Lena (Tester), Nora (UX Reviewer).
+- The team: Saucer (Code Reviewer), Cannon (Implementer), Crab (Plan Reviewer), Mothership (Planner), Nishikado (PM), Octopus (QA Reviewer), Bunker (Security Reviewer), Squid (Tester), Pixel (UX Reviewer).
 - Start the PM: Claude Code: `claude --agent pm --autocompact 300k`
 - Agent definitions (generated, do not edit here): `.claude/agents/`
 - Every request is tracked by ID and name, e.g. `FEAT-003 Account lockout after failed logins`.

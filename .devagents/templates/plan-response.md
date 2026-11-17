@@ -1,6 +1,6 @@
 # Planner response to plan review round <N>: <ID> <Name>
 
-**Planner:** Theo
+**Planner:** Mothership
 **Review answered:** `reviews/plan-r<N>.md`
 **Plan revised in round:** <N+1>
 

@@ -15,18 +15,18 @@ lists the headings). The PM reads a section when its prompt points to one, such 
 
 | Name | Role | Writes | Never does |
 |---|---|---|---|
-| Maya | **PM** | the tracker, `request.md`, `status.md` (with the log), the plan's header fields, review files (verbatim), worktrees, branch + commit | Write plans or code, review work, skip a gate |
-| Theo | **Planner** | the plan, and its response to each plan review | Touch source code |
-| Iris | **Plan Reviewer** | nothing (returns its review); the plan's adversary | Edit the plan or code |
-| Kai | **Implementer** | its work package's code and unit tests, `implementation/<WP>.md` | Touch files outside its package, change scope, commit |
-| Lena | **Tester** | test files, `test-report.md` | Change production code |
-| Quinn | **QA Reviewer** | its breaks list (returns its review); breaks code on purpose, in the scratch copy, to test the tests | Change the worktree, fix code or tests |
-| Omar | **Code Reviewer** | nothing (returns its review); keeps the code consistent with the coding guidelines, and proposes and drafts them | Edit code |
-| Vera | **Security Reviewer** | nothing (returns its review) | Edit code |
-| Nora | **UX Reviewer** | nothing (returns its review); reviews UI-facing items in the running app | Edit code |
+| Nishikado | **PM** | the tracker, `request.md`, `status.md` (with the log), the plan's header fields, review files (verbatim), worktrees, branch + commit | Write plans or code, review work, skip a gate |
+| Mothership | **Planner** | the plan, and its response to each plan review | Touch source code |
+| Crab | **Plan Reviewer** | nothing (returns its review); the plan's adversary | Edit the plan or code |
+| Cannon | **Implementer** | its work package's code and unit tests, `implementation/<WP>.md` | Touch files outside its package, change scope, commit |
+| Squid | **Tester** | test files, `test-report.md` | Change production code |
+| Octopus | **QA Reviewer** | its breaks list (returns its review); breaks code on purpose, in the scratch copy, to test the tests | Change the worktree, fix code or tests |
+| Saucer | **Code Reviewer** | nothing (returns its review); keeps the code consistent with the coding guidelines, and proposes and drafts them | Edit code |
+| Bunker | **Security Reviewer** | nothing (returns its review) | Edit code |
+| Pixel | **UX Reviewer** | nothing (returns its review); reviews UI-facing items in the running app | Edit code |
 
 Logs and messages use the names (set in the config), with role and package where it
-helps: "Kai (implementer WP2)". Only the PM talks to the user;
+helps: "Cannon (implementer WP2)". Only the PM talks to the user;
 everyone else talks only to the PM, through its final response and the item files.
 The PM may run several agents of one role at once, for different items or packages.
 

@@ -24,7 +24,7 @@ blocked_by: none  # ID of the item this one waits for
 ## Decisions
 <!-- The user's answers to escalations. Every agent reads these as requirements.
      "D1 (2026-10-13): plan finding P2 (deadlocked: one table or two?) → planner is right: keep one table"
-     "D2 (2026-10-13): Kai (WP2) DISPUTE on C3 (rename API) → drop the finding, keep the name" -->
+     "D2 (2026-10-13): Cannon (WP2) DISPUTE on C3 (rename API) → drop the finding, keep the name" -->
 none
 
 ## Accepted risks
@@ -34,11 +34,11 @@ none
 ## Log
 <!-- One line per dispatch, transition, escalation or failure, newest last, with the
      team member's name, role, round, tier and model. Tokens and cost are in usage.md. E.g.
-     "- 2026-10-13 11:05 Theo (planner) r2 balanced/opus: PLAN WRITTEN — P1 accepted, P2 disputed"
-     "- 2026-10-13 11:12 Iris (plan-reviewer) r2 balanced/opus: CHANGES_REQUESTED — P1 resolved, P2 maintained"
-     "- 2026-10-13 11:20 Theo (planner) r3 balanced/opus: PLAN WRITTEN — P2 deadlocked"
-     "- 2026-10-13 11:31 Maya (PM): tie-break P2 → planner is right (D1)"
-     "- 2026-10-13 14:20 Kai (implementer WP1) r1 balanced/opus: IMPLEMENTED"
-     "- 2026-10-13 14:41 Lena (tester) r1 balanced/opus: ESCALATION BLOCKED — needs Docker for integration tests"
-     "- 2026-10-13 14:43 Maya (PM): asked user (needs-input)" -->
-- <YYYY-MM-DD HH:MM> Maya (PM): created (intake)
+     "- 2026-10-13 11:05 Mothership (planner) r2 balanced/opus: PLAN WRITTEN — P1 accepted, P2 disputed"
+     "- 2026-10-13 11:12 Crab (plan-reviewer) r2 balanced/opus: CHANGES_REQUESTED — P1 resolved, P2 maintained"
+     "- 2026-10-13 11:20 Mothership (planner) r3 balanced/opus: PLAN WRITTEN — P2 deadlocked"
+     "- 2026-10-13 11:31 Nishikado (PM): tie-break P2 → planner is right (D1)"
+     "- 2026-10-13 14:20 Cannon (implementer WP1) r1 balanced/opus: IMPLEMENTED"
+     "- 2026-10-13 14:41 Squid (tester) r1 balanced/opus: ESCALATION BLOCKED — needs Docker for integration tests"
+     "- 2026-10-13 14:43 Nishikado (PM): asked user (needs-input)" -->
+- <YYYY-MM-DD HH:MM> Nishikado (PM): created (intake)

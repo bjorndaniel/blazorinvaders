@@ -1,0 +1,17 @@
+{
+  "declined": [
+    "quality-tools"
+  ],
+  "aliases": {
+    "pm": "Nishikado",
+    "planner": "Mothership",
+    "plan-reviewer": "Crab",
+    "implementer": "Cannon",
+    "tester": "Squid",
+    "qa-reviewer": "Octopus",
+    "code-reviewer": "Saucer",
+    "security-reviewer": "Bunker",
+    "ux-reviewer": "Pixel"
+  },
+  "nameTheme": "Space Invaders"
+}
