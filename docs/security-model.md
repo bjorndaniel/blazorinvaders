@@ -1,6 +1,6 @@
 # Security model: BlazorInvaders
 
-**Last updated:** 2026-11-17, by CHORE-002
+**Last updated:** 2026-11-17, by CHORE-008
 
 This model describes the code as it will be once CHORE-001 (.NET 10), CHORE-006 (template leftovers removed) and CHORE-007 (GitHub workflows hardened) have merged (D4).
 
@@ -20,14 +20,14 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 | ID | Actor | Authenticated by | May | May not |
 |----|-------|------------------|-----|---------|
 | AC1 | Player (anonymous, in a browser) | nothing (no accounts) | play, read both boards, submit initials and a score through the game UI, and keep a personal best and queued scores in its own `localStorage` | change or delete any stored score, or read anything other than the boards |
-| AC2 | Direct API caller (any internet client or script) | nothing. CORS limits browsers only, not other clients | call `gethighscore`, `getleaderboard` and `savehighscore` exactly as AC1 can. The API cannot tell AC1 and AC2 apart | the same limits as AC1 |
+| AC2 | Direct API caller (any internet client or script) | nothing. CORS limits browsers only, not other clients | call `getleaderboard` and `savehighscore` exactly as AC1 can. The API cannot tell AC1 and AC2 apart | the same limits as AC1 |
 | AC3 | Owner / maintainer | GitHub account, Azure account | everything: code, workflows, secrets and Azure resources. Moderates scores directly in Table Storage, because the app has no admin function | none in the app |
 | AC4 | Deploy workflow (`deploy.yml`, on push to `master` or manual dispatch) | GitHub secrets `SWA_DEPLOYMENT_TOKEN`, `AZURE_CREDENTIALS` | publish the static site and deploy the Function App | run on pull requests (the deploy job is skipped for `pull_request`) |
 | AC5 | Provisioning workflows (`provision.yml`, `set-custom-domain.yml`, manual dispatch only) | `AZURE_CREDENTIALS`, `GH_PAT` | create Azure resources, set app settings and CORS, and write repository secrets | run unless someone with write access dispatches them |
 | AC6 | Function App (service identity) | storage account key in its `AzureWebJobsStorage` app setting | create the `HighScores` table, add entities, and read partitions | (not enforced: the account key allows any operation on the account) |
 
 **Rules:**
-- R1: No endpoint requires authentication. All three use `AuthorizationLevel.Anonymous`. Everything the API stores is public.
+- R1: No endpoint requires authentication. Both use `AuthorizationLevel.Anonymous`. Everything the API stores is public.
 - R2: The API only adds scores. No endpoint updates or deletes them. The server picks the partition (`HighScoreValidator.PartitionFor`) and the RowKey (a new GUID).
 - R3: The server validates every submission in `src/api/HighScoreValidator.cs`. The client's filtering in `SetHighScore.razor` is there for the user experience only and is not a control.
 - R4: Secrets live only in GitHub secrets and Function App settings, never in the repository. `FUNCTIONS_API_URL` is public, because it ships in the client's `appsettings.json`.
@@ -39,7 +39,7 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 |----|----------|-----------------|------------------------|
 | TB1 | Browser to Static Web App | static assets, service worker, offline cache | SWA serves them over TLS. `service-worker.published.js` caches only manifest assets, fetches them with `integrity` hashes, and does not cache API calls. `staticwebapp.config.json` sets no security headers. |
 | TB2 | Internet to `POST /api/savehighscore` | JSON body (`name`, `score`, `mode`, `day`) | `HighScoreValidator`: the body is at most 1 KiB (`ReadBoundedAsync`), and a JSON parse error returns 400. The name is trimmed, upper-cased and matched against `^[A-Z0-9]{1,3}$`. The score must be between 1 and 999,999, `mode` must be `daily` or empty, and `day` must be today or yesterday (UTC). Nothing proves the score came from a real game. |
-| TB3 | Internet to `GET /api/getleaderboard` and `GET /api/gethighscore` | query parameters `mode`, `day` | `TryGetLeaderboardPartition`: `mode` must be `daily` or empty, and `day` must match `^[0-9]{8}$` and be a valid date |
+| TB3 | Internet to `GET /api/getleaderboard` | query parameters `mode`, `day` | `TryGetLeaderboardPartition`: `mode` must be `daily` or empty, and `day` must match `^[0-9]{8}$` and be a valid date |
 | TB4 | Function App to Table Storage | entities and the partition filter | an account-key connection string. The filter is built with `TableClient.CreateQueryFilter` (parameterized) from a partition that has already been validated. |
 | TB5 | API response to other players' screens | stored names and scores | names were restricted at TB2, Razor encodes the output (`Leaderboard.razor`), and the canvas draws text with `fillText` (`game.js`) |
 | TB6 | `localStorage` to client | `personalBest`, daily best, `pendingScores` queue | the JSON read is wrapped in try/catch, and queued scores pass through TB2 again when they are sent |
@@ -61,7 +61,7 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 | T10 | Storage credential compromise: the account key in the Function App settings grants full account access (no managed identity, no Key Vault, no table-scoped SAS) | TB4 | AS3, AS1 | The key is not in the repository, and the git history was checked and is clean. `local.settings.json` is git-ignored, and the provisioning workflow masks the key with `::add-mask::`. Whether the key is ever rotated is unknown (Q4). | partly |
 | T11 | CI/CD and supply-chain compromise: a compromised action tag or a workflow change runs with `AZURE_CREDENTIALS`, `GH_PAT` or the SWA token | TB7 | AS4, AS6 | Secrets are not exposed to `pull_request` runs, and no workflow uses `pull_request_target`. CHORE-007 hardens the workflows. The scopes of the service principal and the PAT are unknown (Q3). | partly |
 | T12 | Script injection through workflow-dispatch inputs that are put into `run:` steps | TB8 | AS4 | Fixed by CHORE-007 (D4). Only users with write access can dispatch the workflows, and they can already edit them (R6). | mitigated |
-| T13 | Out-of-support runtime and dependency drift | TB2, TB7 | the API's exposure to unpatched vulnerabilities | CHORE-001 moves the API to `net10.0` and provisions new Function Apps with `--runtime-version 10` (D4). Still open: no Dependabot, no NuGet lock files, and an unused package (`Blazored.Toast`). The provisioning change affects only newly created apps, so the deployed app's runtime setting must be updated separately (Q7). | partly |
+| T13 | Out-of-support runtime and dependency drift | TB2, TB7 | the API's exposure to unpatched vulnerabilities | CHORE-001 moves the API to `net10.0` and provisions new Function Apps with `--runtime-version 10` (D4). Still open: no Dependabot, no NuGet lock files. The provisioning change affects only newly created apps, so the deployed app's runtime setting must be updated separately (Q7). | partly |
 | T14 | Client-side tampering with `localStorage` (personal best, queued scores) | TB6 | only the player's own client | Parse errors are handled. Queued scores are validated again at TB2, so tampering gains nothing beyond what T1 already allows. | mitigated |
 | T15 | Platform hardening gaps: the site sends no CSP, `X-Content-Type-Options` or `frame-ancestors` headers. The provisioning workflow does not enforce HTTPS-only on the Function App. The storage account keeps its default public network access and shared-key access. | TB1, TB2, TB4 | low: the client holds no secrets or sessions | none | open |
 | T16 | A tampered or stale bundle served from the offline cache | TB1 | AS6 | assets fetched from the same origin with SRI `integrity` hashes, old caches deleted on activate, `no-cache` on the service-worker files | mitigated |
@@ -83,3 +83,4 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 ## Revisions
 - 2026-11-17 CHORE-002: first draft, from the code and the user's answers (D1).
 - 2026-11-17 CHORE-002: revised with D2-D4. T1-T4 stay open, to be fixed in follow-up items. Q1, Q3 and Q4 stay open. Q2 is answered. Q5 is closed: CHORE-006 removes the root `SaveHighScore.cs`. Q6 is closed: CHORE-001 moves the API to .NET 10, and T13 becomes partly mitigated. T12 is mitigated by CHORE-007, and TB7, TB8 and T11 were updated to match. Q7 is added.
+- 2026-11-17 CHORE-008: removed the high-score read endpoint and the unused toast package. AC2, R1, TB3 and T13 updated.

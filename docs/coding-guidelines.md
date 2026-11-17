@@ -1,6 +1,6 @@
 # Coding guidelines: BlazorInvaders
 
-**Last updated:** 2026-11-17, by CHORE-009
+**Last updated:** 2026-11-17, by CHORE-008
 
 ## Tools
 | Language | Tool | Config | Check command (read-only) |
@@ -38,14 +38,14 @@ CI (`.github/workflows/deploy.yml`) fails on formatting drift, build errors and 
 | CG13 | A value that both C# and JS use (op codes, enum values, strides, input bits) has a "must match `<file>`" comment on both sides, and both sides change in the same item. | must | docs/architecture.md A12; code: `Enumerations.cs`, `Scene.cs` |
 | CG14 | State that only tests need is `internal` (reached through `InternalsVisibleTo`), with a doc comment saying it is for tests. It is never `public`. | should | code: `GameEngine.cs` test hooks |
 | CG15 | New classes are `sealed` unless they are designed for inheritance. | should | code: `Scene`, `ComboTracker`, `DailyChallenge` |
-| CG16 | The API has one internal static helper in `src/api` (e.g. `FunctionResponses.cs`) for plain-text responses and for the `"AzureWebJobsStorage"` and `"HighScores"` names. The next item that touches the API creates it from `SaveHighScore.TextResponse` and moves the three functions to it. New functions use it. | should | user (D2) |
+| CG16 | The API has one internal static helper in `src/api` (e.g. `FunctionResponses.cs`) for plain-text responses and for the `"AzureWebJobsStorage"` and `"HighScores"` names. The next item that touches the API creates it from `SaveHighScore.TextResponse` and moves the two functions to it. New functions use it. | should | user (D2) |
 | CG17 | New files use file-scoped namespaces. Existing files keep their style, with no reformatting-only changes. `new()` versus `[]` and `== null` versus `is null` follow the surrounding code. | should | user (D3) |
 
 ## Errors and logging
 | ID | Rule | Level | Source |
 |----|------|-------|--------|
 | CG20 | No empty or silent catch. A catch logs the failure: with `ILogger<T>` in the API, and to the console in the client and in JS. Only a failure that is expected, safe to ignore and not an API or network failure may carry a comment saying why instead of being logged (e.g. `localStorage` unavailable in `game.js`). An API failure is logged even when being offline is the likely cause. The next change to `src/Pages/Leaderboard.razor` brings its bare `catch` in line, logging the failure and showing a failed state. | must | user (D4) |
-| CG21 | Specific, expected exceptions are caught first (`catch (RequestFailedException ex) when (ex.Status == 404)`). A catch-all is allowed only at a boundary: a Function's `Run`, a Razor handler, a JS-interop call or a fire-and-forget task. | must | code: `src/api/GetHighScore.cs` |
+| CG21 | Specific, expected exceptions are caught first (`catch (JsonException)` in `HighScoreValidator`). A catch-all is allowed only at a boundary: a Function's `Run`, a Razor handler, a JS-interop call or a fire-and-forget task. | must | code: `src/api/HighScoreValidator.cs`, `src/api/SaveHighScore.cs` |
 | CG22 | Validation of untrusted input returns `bool Try...(..., out T result, out string error)` with a short message the user can read. It never throws. | should | code: `HighScoreValidator`; docs/architecture.md A20 |
 | CG23 | `_ = SomethingAsync()` is used only for a method that catches all of its own exceptions, with a comment saying so. | must | code: `Index.razor` (`SubmitHighScoreAsync`) |
 | CG24 | Never log or return the connection string or environment values, and never put an exception's text in an HTTP response. Client console messages may include `ex.Message`. | must | docs/architecture.md A22, A23 |
@@ -93,3 +93,4 @@ CI (`.github/workflows/deploy.yml`) fails on formatting drift, build errors and 
 ## Revisions
 - 2026-11-17 CHORE-004: first version, from the proposal and the user's decisions D1-D8.
 - 2026-11-17 CHORE-009: Tools row, CI sentence, CG1, CG72 and CG73 updated for the root `.editorconfig` and the CI format check; A6 Open question resolved.
+- 2026-11-17 CHORE-008: CG21 example and evidence moved from the deleted high-score read function to `HighScoreValidator.cs` and `SaveHighScore.cs`. CG16 says two functions; the move to `FunctionResponses.cs` stays deferred.

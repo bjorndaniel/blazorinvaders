@@ -1,6 +1,6 @@
 # UX guidelines: Blazor Invaders
 
-**Last updated:** 2026-11-17, by CHORE-005 (draft, round 2)
+**Last updated:** 2026-11-17, by CHORE-008
 
 ## Product and users
 A Space Invaders game in the browser, installable as a PWA that also plays offline. Players use a desktop with a keyboard or a phone with touch (D1). Their top tasks are playing a game (standard or today's challenge), entering initials after a qualifying score, and viewing the leaderboards (all-time and today's challenge). There are no accounts. Personal bests are kept on the device.
@@ -8,7 +8,7 @@ A Space Invaders game in the browser, installable as a PWA that also plays offli
 ## Sources
 | Source | Where | Decides |
 |--------|-------|---------|
-| User decisions | `docs/work/CHORE-005-ux-guidelines/status.md` D1-D4 | D1: there are no design documents, so the current UI is the reference; desktop keyboard plus phone touch; retro neon on black; WCAG 2.2 AA where a canvas game allows; English only. D2: the five known gaps get fixed in one fix-up item, and pinch zoom stays blocked only during play. D3: a mute control and larger phone text are wanted. D4: Blazored.Toast is not the notification pattern. |
+| User decisions | `docs/work/CHORE-005-ux-guidelines/status.md` D1-D4 | D1: there are no design documents, so the current UI is the reference; desktop keyboard plus phone touch; retro neon on black; WCAG 2.2 AA where a canvas game allows; English only. D2: the five known gaps get fixed in one fix-up item, and pinch zoom stays blocked only during play. D3: a mute control and larger phone text are wanted. D4: there is no toast or notification library; messages go on the canvas or in page text. |
 | Page styles | `src/wwwroot/css/app.css`, Bootstrap in `src/wwwroot/css/bootstrap/` | Page colours, layout, breakpoints, touch controls, dialog styling |
 | Canvas look and copy | `src/core/Rendering/SceneBuilder.cs`, `src/wwwroot/js/game.js`, `src/wwwroot/js/effects.js` | Playfield palette, text sizes, on-canvas messages, input keys, effects |
 | Dialogs | Blazored.Modal 7.3.1 (`src/BlazorInvaders.csproj`) | Modal behaviour |
@@ -35,7 +35,7 @@ A Space Invaders game in the browser, installable as a PWA that also plays offli
 ## Components and patterns
 | ID | Guideline | Source |
 |----|-----------|--------|
-| UX20 | Page UI uses Bootstrap classes (`btn`, `btn-group`, `table-dark`, grid) and `app.css`. Dialogs use Blazored.Modal, with black text on white as styled in `app.css` (`.blazored-modal`, `.bm-content`). There are no toasts. Blazored.Toast is unused and will be removed by CHORE-008. A message goes on the canvas (UX22) or into page text next to its cause. No other component library is added. | code, D4 |
+| UX20 | Page UI uses Bootstrap classes (`btn`, `btn-group`, `table-dark`, grid) and `app.css`. Dialogs use Blazored.Modal, with black text on white as styled in `app.css` (`.blazored-modal`, `.bm-content`). There are no toasts. A message goes on the canvas (UX22) or into page text next to its cause. No other component library is added. | code, D4 |
 | UX21 | The primary action is `btn-primary` and the secondary one is `btn-secondary` (white with dark text). Labels are verbs or destinations, such as `Submit`, `Cancel` and `Back to game`. | code, default rules |
 | UX22 | Game states are drawn on the canvas, not in HTML: the cycling attract screens, wave banners, the pause overlay and game over. Every overlay that waits for the player names the key or tap that continues it. | code (`SceneBuilder.cs`) |
 | UX23 | The initials dialog stops game input while it is open and returns focus to the playfield when it closes. Validation errors appear under the inputs and are plain ("Use letters A-Z or digits"). The typed initials stay in the inputs. | code (`SetHighScore.razor`, `Index.razor`) |
@@ -98,3 +98,4 @@ Not built yet, each in its own later item (D3): the mute control (UX29) and the 
   - UX20 states there are no toasts.
   - Named the initials inputs in UX33.
   - Removed the resolved open questions.
+- 2026-11-17 CHORE-008: removed the toast package reference from D4 and UX20; no toast package is used.
