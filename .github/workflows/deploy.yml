@@ -19,7 +19,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
-            9.0.x
             10.0.x
 
       - name: Build
@@ -41,7 +40,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
-            9.0.x
             10.0.x
 
       - name: Inject API URL into appsettings.json

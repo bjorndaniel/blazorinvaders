@@ -1,0 +1,14 @@
+{ "test": "node C:/Users/elici/AppData/Local/Temp/claude/abad4d2d2f6bcd2d/41501319-ac2a-40b7-9c4d-6a53fd059269/scratchpad/net9check.mjs",
+  "breaks": [
+    { "id": "B1", "description": "AC1: API back to net9.0, checked by the build and test suite only", "file": "src/api/BlazorInvaders.Api.csproj",
+      "find": "<TargetFramework>net10.0</TargetFramework>", "replace": "<TargetFramework>net9.0</TargetFramework>",
+      "test": "dotnet build src/BlazorInvaders.sln --nologo -v q && dotnet test tests/BlazorInvaders.Tests --nologo -v q" },
+    { "id": "B2", "description": "AC1/AC5: API back to net9.0, checked by the plan's step 5 grep", "file": "src/api/BlazorInvaders.Api.csproj",
+      "find": "<TargetFramework>net10.0</TargetFramework>", "replace": "<TargetFramework>net9.0</TargetFramework>" },
+    { "id": "B3", "description": "AC2: 9.0.x back in the build_and_test Setup .NET step", "file": ".github/workflows/deploy.yml",
+      "find": "            10.0.x\n\n      - name: Build", "replace": "            9.0.x\n            10.0.x\n\n      - name: Build" },
+    { "id": "B4", "description": "AC3: provision runtime back to 9", "file": ".github/workflows/provision.yml",
+      "find": "--runtime-version 10", "replace": "--runtime-version 9" },
+    { "id": "B5", "description": "Step 4: README backend row back to .NET 9", "file": "README.md",
+      "find": "(isolated worker, .NET 10)", "replace": "(isolated worker, .NET 9)" }
+  ] }
