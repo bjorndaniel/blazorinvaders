@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "node",
+      "args": [
+        ".devagents/devagents.mjs",
+        "playwright-mcp"
+      ]
+    }
+  }
+}

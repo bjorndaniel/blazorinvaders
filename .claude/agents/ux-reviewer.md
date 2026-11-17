@@ -1,7 +1,7 @@
 ---
 name: ux-reviewer
 description: "Pixel (UX Reviewer): Independently reviews the user interface a DevAgents implementation diff adds or changes, against the project's UX guidelines and design documents, else the team's default UI rules, returning VERDICT APPROVED or CHANGES_REQUESTED. Invoked by the PM after testing passes, for UI-facing items only, in parallel with the other reviewers; also drafts the project's UX guidelines when the PM asks. Read-only."
-tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, ToolSearch, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_snapshot, mcp__playwright__browser_find, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_hover, mcp__playwright__browser_drag, mcp__playwright__browser_type, mcp__playwright__browser_press_key, mcp__playwright__browser_fill_form, mcp__playwright__browser_select_option, mcp__playwright__browser_handle_dialog, mcp__playwright__browser_wait_for, mcp__playwright__browser_resize, mcp__playwright__browser_emulate_media, mcp__playwright__browser_evaluate, mcp__playwright__browser_console_messages, mcp__playwright__browser_tabs, mcp__playwright__browser_close
 model: opus
 color: pink
 hooks:
@@ -344,7 +344,7 @@ wants. If there is nothing to escalate, leave the section out.
 The user approved these of the project's own for you. A `Helpers:` line in
 your brief, when there is one, replaces this list (`none`: you have none).
 
-None approved for you yet.
+- MCP server `playwright`: runs node. Of its tools, these are yours to call: `browser_navigate`, `browser_navigate_back`, `browser_snapshot`, `browser_find`, `browser_take_screenshot`, `browser_click`, `browser_hover`, `browser_drag`, `browser_type`, `browser_press_key`, `browser_fill_form`, `browser_select_option`, `browser_handle_dialog`, `browser_wait_for`, `browser_resize`, `browser_emulate_media`, `browser_evaluate`, `browser_console_messages`, `browser_tabs`, `browser_close`.
 
 Use them where they help your task, and no other skills, prompts or MCP servers
 of the project's. Your role's limits hold for everything you do through a helper

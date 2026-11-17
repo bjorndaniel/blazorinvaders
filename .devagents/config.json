@@ -13,5 +13,70 @@
     "security-reviewer": "Bunker",
     "ux-reviewer": "Pixel"
   },
-  "nameTheme": "Space Invaders"
+  "nameTheme": "Space Invaders",
+  "uxPreview": {
+    "command": "dotnet run --project src/BlazorInvaders.csproj --urls http://localhost:{port}"
+  },
+  "helpers": {
+    "mcp:playwright/browser_navigate": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_navigate_back": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_snapshot": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_find": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_take_screenshot": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_click": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_hover": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_drag": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_type": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_press_key": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_fill_form": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_select_option": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_handle_dialog": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_wait_for": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_resize": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_emulate_media": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_evaluate": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_console_messages": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_tabs": [
+      "ux-reviewer"
+    ],
+    "mcp:playwright/browser_close": [
+      "ux-reviewer"
+    ]
+  }
 }
