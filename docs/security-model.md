@@ -28,10 +28,10 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 
 **Rules:**
 - R1: No endpoint requires authentication. Both use `AuthorizationLevel.Anonymous`. Everything the API stores is public.
-- R2: The API only adds scores. No endpoint updates or deletes them. The server picks the partition (`HighScoreValidator.PartitionFor`) and the RowKey (a new GUID).
+- R2: The API only adds scores. No endpoint updates or deletes them. The server picks the partition (`HighScoreValidator.PartitionFor`) and the RowKey (a ranked key: inverted score plus a new GUID). Still add-only: no update, upsert or delete.
 - R3: The server validates every submission in `src/api/HighScoreValidator.cs`. The client's filtering in `SetHighScore.razor` is there for the user experience only and is not a control.
 - R4: Secrets live only in GitHub secrets and Function App settings, never in the repository. `FUNCTIONS_API_URL` is public, because it ships in the client's `appsettings.json`.
-- R5: Only AC3 does moderation (removing bad entries), through Azure.
+- R5: Only AC3 does moderation (removing bad entries), through Azure. A removed legacy (GUID-keyed) row stays on the boards of warm Function App instances until the app restarts, because the legacy top 10 is cached per instance.
 - R6: Anyone with write access to the repository can dispatch AC5, and so in effect holds AC3's power over Azure and the repository's secrets.
 
 ## Trust boundaries
@@ -40,7 +40,7 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 | TB1 | Browser to Static Web App | static assets, service worker, offline cache | SWA serves them over TLS. `service-worker.published.js` caches only manifest assets, fetches them with `integrity` hashes, and does not cache API calls. `staticwebapp.config.json` sets no security headers. |
 | TB2 | Internet to `POST /api/savehighscore` | JSON body (`name`, `score`, `mode`, `day`) | `HighScoreValidator`: the body is at most 1 KiB (`ReadBoundedAsync`), and a JSON parse error returns 400. The name is trimmed, upper-cased and matched against `^[A-Z0-9]{1,3}$`. The score must be between 1 and 999,999, `mode` must be `daily` or empty, and `day` must be today or yesterday (UTC). Nothing proves the score came from a real game. |
 | TB3 | Internet to `GET /api/getleaderboard` | query parameters `mode`, `day` | `TryGetLeaderboardPartition`: `mode` must be `daily` or empty, and `day` must match `^[0-9]{8}$` and be a valid date |
-| TB4 | Function App to Table Storage | entities and the partition filter | an account-key connection string. The filter is built with `TableClient.CreateQueryFilter` (parameterized) from a partition that has already been validated. |
+| TB4 | Function App to Table Storage | entities and the partition filter | an account-key connection string. The filters (partition, and RowKey range bounds) are built with `TableClient.CreateQueryFilter` (parameterized) from constants and a partition that has already been validated. |
 | TB5 | API response to other players' screens | stored names and scores | names were restricted at TB2, Razor encodes the output (`Leaderboard.razor`), and the canvas draws text with `fillText` (`game.js`) |
 | TB6 | `localStorage` to client | `personalBest`, daily best, `pendingScores` queue | the JSON read is wrapped in try/catch, and queued scores pass through TB2 again when they are sent |
 | TB7 | GitHub repository to Azure (CI/CD) | code, workflow files, secrets | secrets are used only in jobs that do not run for pull requests. Further workflow hardening comes from CHORE-007 (see T11). |
@@ -51,11 +51,11 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 |----|--------|----------|--------|------------|--------|
 | T1 | Score forgery: AC2 posts any score up to 999,999 to the all-time board, or to today's or yesterday's daily board, without playing | TB2 | AS1: fake scores take over the top 10 | Only range, format and day-window checks. Nothing ties a score to a game that was played. The owner can remove entries by hand (R5). Planned for a follow-up item (D2). | open |
 | T2 | Spam / flooding: unlimited anonymous POSTs fill the boards with junk entries and make the table grow without limit | TB2 | AS1, AS5 | None: no rate limit, quota or per-client throttle. Planned for a follow-up item (D2). | open |
-| T3 | Unbounded leaderboard read: every `getleaderboard` call reads the whole partition and sorts it in memory. The all-time partition never shrinks, so latency and transaction cost grow with every entry until requests time out. T2 makes this worse. | TB3, TB4 | AS5; the leaderboard stops working | None: no cap, no pre-computed top 10, no cache. `CreateTableIfNotExistsAsync` also runs on every GET. Planned for a follow-up item (D2). | open |
+| T3 | Unbounded leaderboard read: every `getleaderboard` call read the whole partition and sorted it in memory, so latency and cost grew with every entry. Flooding (T2) no longer slows the read. | TB3, TB4 | AS5; the leaderboard stops working | New scores get a ranked RowKey, and a GET reads one page of at most 10 entities from the ranked key range, merged in memory with the cached legacy top 10 of that board (one legacy read per board and instance, empty results not cached, 5-minute back-off after a failure). The table is created once per instance. | mitigated |
 | T4 | Denial of wallet / availability: a flood of requests to the anonymous endpoints scales the consumption plan and the storage transactions | TB2, TB3 | AS5 | Only the consumption plan's own platform limits. CORS does not stop non-browser clients. Planned for a follow-up item (D2). | open |
 | T5 | Stored XSS or markup injection through names shown to other players | TB2, TB5 | AS6, other players' sessions | server-side `^[A-Z0-9]{1,3}$`, Razor output encoding, canvas `fillText` | mitigated |
 | T6 | Offensive initials on the public boards | TB2 | AS1, reputation | Nothing beyond the 3-character limit and manual removal (R5). | open |
-| T7 | Table query or key injection | TB3, TB4 | AS1, AS3 | parameterized `CreateQueryFilter`, partition built from validated values, GUID RowKey chosen by the server, a DTO with only four fields (no mass assignment) | mitigated |
+| T7 | Table query or key injection | TB3, TB4 | AS1, AS3 | parameterized `CreateQueryFilter`, partition built from validated values, ranked RowKey chosen by the server, a DTO with only four fields (no mass assignment) | mitigated |
 | T8 | Oversized or malformed request bodies | TB2 | AS5 | a 1 KiB read limit (returns 413), and `JsonException` is handled (returns 400) | mitigated |
 | T9 | Internal details leaking in error responses | TB2, TB3 | AS3 | fixed generic messages. Exceptions are logged on the server only. | mitigated |
 | T10 | Storage credential compromise: the account key in the Function App settings grants full account access (no managed identity, no Key Vault, no table-scoped SAS) | TB4 | AS3, AS1 | The key is not in the repository, and the git history was checked and is clean. `local.settings.json` is git-ignored, and the provisioning workflow masks the key with `::add-mask::`. Whether the key is ever rotated is unknown (Q4). | partly |
@@ -84,3 +84,4 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 - 2026-11-17 CHORE-002: first draft, from the code and the user's answers (D1).
 - 2026-11-17 CHORE-002: revised with D2-D4. T1-T4 stay open, to be fixed in follow-up items. Q1, Q3 and Q4 stay open. Q2 is answered. Q5 is closed: CHORE-006 removes the root `SaveHighScore.cs`. Q6 is closed: CHORE-001 moves the API to .NET 10, and T13 becomes partly mitigated. T12 is mitigated by CHORE-007, and TB7, TB8 and T11 were updated to match. Q7 is added.
 - 2026-11-17 CHORE-008: removed the high-score read endpoint and the unused toast package. AC2, R1, TB3 and T13 updated.
+- 2026-11-17 CHORE-012: capped the leaderboard read with a ranked RowKey. T3 is mitigated; R2, TB4 and T7 reworded. T2 and T4 stay open.

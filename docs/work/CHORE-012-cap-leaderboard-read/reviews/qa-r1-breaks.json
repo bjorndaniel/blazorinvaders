@@ -1,0 +1,13 @@
+{ "test": "dotnet test tests/BlazorInvaders.Tests --nologo",
+  "breaks": [
+  {"id":"Q-B1","description":"AC1 negative score: drop long cast (overflow)","file":"src/api/LeaderboardRanking.cs","find":"(long)int.MaxValue - score","replace":"int.MaxValue - score"},
+  {"id":"Q-B2","description":"AC1 TakeTopAsync boundary >= to >","file":"src/api/LeaderboardRanking.cs","find":"if (items.Count >= MaxEntries)","replace":"if (items.Count > MaxEntries)"},
+  {"id":"Q-B3","description":"AC1 Merge cap +1","file":"src/api/LeaderboardRanking.cs","find":".Take(MaxEntries)","replace":".Take(MaxEntries + 1)"},
+  {"id":"Q-B4","description":"AC4 Merge ignores tie order (score only, input order)","file":"src/api/LeaderboardRanking.cs","find":".OrderBy(SortKey, StringComparer.Ordinal)","replace":".OrderByDescending(r => r.Score)"},
+  {"id":"Q-B5","description":"AC4 missing Score unreadable instead of 0","file":"src/api/LeaderboardRanking.cs","find":"case null:","replace":"case null when false:"},
+  {"id":"Q-B6","description":"AC4 Int64 Score accepted","file":"src/api/LeaderboardRanking.cs","find":"case int value:","replace":"case long l: score = (int)l; return true; case int value:"},
+  {"id":"Q-B7","description":"AC2 failure sets no back-off","file":"src/api/LegacyTopCache.cs","find":"RetryAfter = time.GetUtcNow() + RetryInterval;","replace":"RetryAfter = time.GetUtcNow();"},
+  {"id":"Q-B8","description":"AC2 back-off also hides cached boards","file":"src/api/LegacyTopCache.cs","find":"if (!_entries.TryGetValue(partition, out var entry))","replace":"_entries.TryGetValue(partition, out var entry); if (true)"},
+  {"id":"Q-B9","description":"AC2 empty/failed load evicts other boards","file":"src/api/LegacyTopCache.cs","find":".Remove(new(partition, self));","replace":".Remove(new(partition, self)); _entries.Clear();"},
+  {"id":"Q-B10","description":"error handling: faulted load rethrown","file":"src/api/LegacyTopCache.cs","find":"onLoadFailed?.Invoke(partition, ex);","replace":"onLoadFailed?.Invoke(partition, ex); throw;"}
+  ]}

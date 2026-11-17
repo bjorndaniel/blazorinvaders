@@ -1,0 +1,11 @@
+{ "test": "dotnet test tests/BlazorInvaders.Tests --nologo",
+  "breaks": [
+  {"id":"B1","description":"AC1 cap 10 to 11","file":"src/api/LeaderboardRanking.cs","find":"MaxEntries = 10;","replace":"MaxEntries = 11;"},
+  {"id":"B2","description":"AC1 padding D10 to D9","file":"src/api/LeaderboardRanking.cs","find":":D10}","replace":":D9}"},
+  {"id":"B3","description":"AC1 range end boundary","file":"src/api/LeaderboardRanking.cs","find":"RangeEnd) < 0","replace":"RangeEnd) <= 0"},
+  {"id":"B4","description":"AC2 backoff 5 to 4 min","file":"src/api/LegacyTopCache.cs","find":"FromMinutes(5)","replace":"FromMinutes(4)"},
+  {"id":"B5","description":"AC2 backoff boundary","file":"src/api/LegacyTopCache.cs","find":"time.GetUtcNow() < RetryAfter","replace":"time.GetUtcNow() <= RetryAfter"},
+  {"id":"B6","description":"AC2 empty cached","file":"src/api/LegacyTopCache.cs","find":"rows is null || rows.Count == 0","replace":"rows is null"},
+  {"id":"B7","description":"AC1 TakeTop no break","file":"src/api/LeaderboardRanking.cs","find":"if (items.Count >= MaxEntries)\n                break;","replace":""},
+  {"id":"B8","description":"AC4 merge tie order","file":"src/api/LeaderboardRanking.cs","find":"IsRanked(row.RowKey) ? row.RowKey : RankedRowKey(row.Score, row.RowKey)","replace":"RankedRowKey(row.Score, row.RowKey)"}
+  ]}

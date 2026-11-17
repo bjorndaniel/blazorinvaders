@@ -25,8 +25,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- API validation is dependency-free, so it is compiled in directly rather than referencing the Functions app -->
+    <!-- API validation and leaderboard ranking are dependency-free, so they are compiled in directly rather than referencing the Functions app -->
     <Compile Include="..\..\src\api\HighScoreValidator.cs" />
+    <Compile Include="..\..\src\api\StoredScore.cs" />
+    <Compile Include="..\..\src\api\LeaderboardRanking.cs" />
+    <Compile Include="..\..\src\api\LegacyTopCache.cs" />
   </ItemGroup>
 
 </Project>
