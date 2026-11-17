@@ -1,6 +1,7 @@
 using BlazorInvaders.GameObjects;
 using BlazorInvaders.Rendering;
 using Xunit;
+using static BlazorInvaders.Tests.TestPlay;
 
 namespace BlazorInvaders.Tests;
 
@@ -16,8 +17,6 @@ public class SceneBuilderTests
         [Scene.OpCircle] = 5,
         [Scene.OpEffects] = 0,
     };
-
-    private static GameEngine NewEngine() => new(870, 500, new Random(42));
 
     private static List<(int op, int[] args)> Decode(Scene scene)
     {
@@ -111,7 +110,7 @@ public class SceneBuilderTests
         var engine = NewEngine();
         engine.Start(0);
         engine.Fire();
-        RunMs(engine, 500);
+        Run(engine, 0, 500);
 
         var scene = new SceneBuilder().Build(engine, 500);
 
@@ -129,7 +128,7 @@ public class SceneBuilderTests
         var engine = NewEngine();
         engine.Start(0);
         engine.Fire();
-        RunMs(engine, 500);
+        Run(engine, 0, 500);
         var builder = new SceneBuilder();
 
         Assert.NotEmpty(builder.Build(engine, 500).Events);
@@ -167,7 +166,7 @@ public class SceneBuilderTests
         engine.Start(0);
         engine.SpawnPowerUp(PowerUpType.RapidFire, engine.Player!.CurrentPosition);
         engine.SpawnPowerUp(PowerUpType.Shield, engine.Player.CurrentPosition);
-        RunMs(engine, 40);
+        Run(engine, 0, 40);
 
         var scene = new SceneBuilder().Build(engine, 40);
 
@@ -271,12 +270,6 @@ public class SceneBuilderTests
         Assert.Contains("DAILY CHALLENGE", texts);
         Assert.Contains("ONE LIFE, DOUBLE POINTS", texts);
         Assert.Contains("Press D to play", texts);
-    }
-
-    private static void RunMs(GameEngine engine, int ms)
-    {
-        for (var t = GameEngine.StepMs; t <= ms; t += GameEngine.StepMs)
-            engine.Update(t);
     }
 
     [Fact]

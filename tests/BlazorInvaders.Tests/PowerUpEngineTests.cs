@@ -1,24 +1,11 @@
 using BlazorInvaders.GameObjects;
 using Xunit;
+using static BlazorInvaders.Tests.TestPlay;
 
 namespace BlazorInvaders.Tests;
 
 public class PowerUpEngineTests
 {
-    private const int Width = 870;
-    private const int Height = 500;
-
-    private static GameEngine NewEngine() => new(Width, Height, new Random(42));
-
-    /// <summary>Advances the engine in 60 Hz frames for <paramref name="durationMs"/> and returns the new time.</summary>
-    private static float Run(GameEngine engine, float fromMs, float durationMs)
-    {
-        var frames = (int)Math.Round(durationMs / GameEngine.StepMs);
-        for (int i = 1; i <= frames; i++)
-            engine.Update(fromMs + i * GameEngine.StepMs);
-        return fromMs + frames * GameEngine.StepMs;
-    }
-
     /// <summary>Drops a power-up on the ship and lets it be collected.</summary>
     private static float Collect(GameEngine engine, PowerUpType type, float fromMs)
     {

@@ -1,29 +1,11 @@
 using BlazorInvaders.GameObjects;
 using Xunit;
+using static BlazorInvaders.Tests.TestPlay;
 
 namespace BlazorInvaders.Tests;
 
 public class GameEngineTests
 {
-    private const int Width = 870;
-    private const int Height = 500;
-
-    private static GameEngine NewEngine() => new(Width, Height, new Random(42));
-
-    /// <summary>Feeds frame timestamps at <paramref name="hz"/> from <paramref name="fromMs"/> for <paramref name="durationMs"/>.</summary>
-    private static float Run(GameEngine engine, float fromMs, float durationMs, float hz = 60)
-    {
-        var frameMs = 1000.0 / hz;
-        var frames = (int)Math.Round(durationMs / frameMs);
-        var t = fromMs;
-        for (int i = 1; i <= frames; i++)
-        {
-            t = (float)(fromMs + i * frameMs);
-            engine.Update(t);
-        }
-        return t;
-    }
-
     private static void RunUntilGameOver(GameEngine engine)
     {
         var t = 0f;

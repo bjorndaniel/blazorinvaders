@@ -1,12 +1,11 @@
 using BlazorInvaders.GameObjects;
 using Xunit;
+using static BlazorInvaders.Tests.TestPlay;
 
 namespace BlazorInvaders.Tests;
 
 public class DailyChallengeTests
 {
-    private const int Width = 870;
-    private const int Height = 500;
     private static readonly DateOnly Day = new(2026, 10, 13);
 
     private static DailyChallenge With(DailyModifier modifier) => new(Day, modifier);
@@ -145,7 +144,7 @@ public class DailyChallengeTests
     [Fact]
     public void Glass_OneLifeDoublePoints()
     {
-        var engine = new GameEngine(Width, Height, new Random(42));
+        var engine = NewEngine();
         engine.Start(0, daily: With(DailyModifier.Glass));
         engine.AliensHoldFire = true;
 

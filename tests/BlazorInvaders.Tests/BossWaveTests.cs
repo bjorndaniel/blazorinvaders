@@ -1,24 +1,12 @@
 using System.Drawing;
 using BlazorInvaders.GameObjects;
 using Xunit;
+using static BlazorInvaders.Tests.TestPlay;
 
 namespace BlazorInvaders.Tests;
 
 public class BossWaveTests
 {
-    private const int Width = 870;
-    private const int Height = 500;
-
-    private static GameEngine NewEngine() => new(Width, Height, new Random(42));
-
-    private static float Run(GameEngine engine, float fromMs, float durationMs)
-    {
-        var frames = (int)Math.Round(durationMs / GameEngine.StepMs);
-        for (int i = 1; i <= frames; i++)
-            engine.Update(fromMs + i * GameEngine.StepMs);
-        return fromMs + frames * GameEngine.StepMs;
-    }
-
     [Fact]
     public void FifthWave_SpawnsBossInsteadOfAliens()
     {
@@ -163,8 +151,8 @@ public class BossTests
 
         for (int i = 0; i < 2000; i++)
         {
-            boss.Move(870);
-            Assert.InRange(boss.Position.X, 10, 870 - 10 - Boss.Size.Width);
+            boss.Move(Width);
+            Assert.InRange(boss.Position.X, 10, Width - 10 - Boss.Size.Width);
         }
     }
 
