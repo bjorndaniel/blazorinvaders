@@ -13,3 +13,4 @@
 | CHORE-001 | Upgrade API and CI to .NET 10 | CHORE | S | done | devagents/CHORE-001-upgrade-api-and-ci-to-net-10 | 2026-11-17 | 2026-11-17 | $3.16 |
 | CHORE-004 | Coding guidelines | CHORE | S | done | devagents/CHORE-004-coding-guidelines | 2026-11-17 | 2026-11-17 | $2.70 |
 | CHORE-003 | Architecture | CHORE | S | done | devagents/CHORE-003-architecture | 2026-11-17 | 2026-11-17 | $0.88 |
+| CHORE-006 | Remove template leftovers | CHORE | S | done | devagents/CHORE-006-remove-template-leftovers | 2026-11-17 | 2026-11-17 | $1.59 |
