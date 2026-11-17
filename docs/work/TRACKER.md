@@ -9,4 +9,5 @@
 
 | ID | Name | Type | Size | Status | Branch | Opened | Updated | Cost |
 |----|------|------|------|--------|--------|--------|---------|------|
+| CHORE-004 | Coding guidelines | CHORE | S | done | devagents/CHORE-004-coding-guidelines | 2026-11-17 | 2026-11-17 | $2.70 |
 | CHORE-003 | Architecture | CHORE | S | done | devagents/CHORE-003-architecture | 2026-11-17 | 2026-11-17 | $0.88 |
