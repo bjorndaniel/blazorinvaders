@@ -9,6 +9,9 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build_and_test:
     runs-on: ubuntu-latest
@@ -43,8 +46,10 @@ jobs:
             10.0.x
 
       - name: Inject API URL into appsettings.json
+        env:
+          FUNCTIONS_API_URL: ${{ secrets.FUNCTIONS_API_URL }}
         run: |
-          sed -i "s|#{FUNCTIONS_API_URL}#|${{ secrets.FUNCTIONS_API_URL }}|g" \
+          sed -i "s|#{FUNCTIONS_API_URL}#|${FUNCTIONS_API_URL}|g" \
             src/wwwroot/appsettings.json
 
       - name: Publish Blazor WASM

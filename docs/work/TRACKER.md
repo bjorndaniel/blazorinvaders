@@ -9,4 +9,5 @@
 
 | ID | Name | Type | Size | Status | Branch | Opened | Updated | Cost |
 |----|------|------|------|--------|--------|--------|---------|------|
+| CHORE-007 | Harden GitHub workflows | CHORE | S | done | devagents/CHORE-007-harden-github-workflows | 2026-11-17 | 2026-11-17 | $3.19 |
 | CHORE-001 | Upgrade API and CI to .NET 10 | CHORE | S | done | devagents/CHORE-001-upgrade-api-and-ci-to-net-10 | 2026-11-17 | 2026-11-17 | $3.16 |
