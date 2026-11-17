@@ -28,9 +28,19 @@ on:
         required: false
         default: ""
 
+permissions:
+  contents: read
+
 jobs:
   provision:
     runs-on: ubuntu-latest
+    env:
+      RESOURCE_GROUP: ${{ inputs.resource_group }}
+      LOCATION: ${{ inputs.location }}
+      APP_NAME: ${{ inputs.app_name }}
+      STORAGE_NAME: ${{ inputs.storage_name }}
+      FUNCTION_APP_NAME: ${{ inputs.function_app_name }}
+      CUSTOM_DOMAIN: ${{ inputs.custom_domain }}
     steps:
       - uses: actions/checkout@v4
 
@@ -42,15 +52,15 @@ jobs:
       - name: Create resource group
         run: |
           az group create \
-            --name "${{ inputs.resource_group }}" \
-            --location "${{ inputs.location }}"
+            --name "$RESOURCE_GROUP" \
+            --location "$LOCATION"
 
       - name: Create storage account
         run: |
           az storage account create \
-            --name "${{ inputs.storage_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
-            --location "${{ inputs.location }}" \
+            --name "$STORAGE_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --location "$LOCATION" \
             --sku Standard_LRS \
             --min-tls-version TLS1_2
 
@@ -58,8 +68,8 @@ jobs:
         id: storage
         run: |
           CONN_STR=$(az storage account show-connection-string \
-            --name "${{ inputs.storage_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
+            --name "$STORAGE_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
             --query connectionString -o tsv)
           echo "::add-mask::$CONN_STR"
           echo "connection_string=$CONN_STR" >> $GITHUB_OUTPUT
@@ -67,45 +77,47 @@ jobs:
       - name: Create Static Web App
         run: |
           az staticwebapp create \
-            --name "${{ inputs.app_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
-            --location "${{ inputs.location }}" \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --location "$LOCATION" \
             --sku Free
 
       - name: Create Function App (consumption plan)
         run: |
           az functionapp create \
-            --name "${{ inputs.function_app_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
-            --storage-account "${{ inputs.storage_name }}" \
-            --consumption-plan-location "${{ inputs.location }}" \
+            --name "$FUNCTION_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --storage-account "$STORAGE_NAME" \
+            --consumption-plan-location "$LOCATION" \
             --runtime dotnet-isolated \
             --runtime-version 10 \
             --functions-version 4 \
             --os-type Windows
 
       - name: Configure Function App settings
+        env:
+          STORAGE_CONN_STR: ${{ steps.storage.outputs.connection_string }}
         run: |
           az functionapp config appsettings set \
-            --name "${{ inputs.function_app_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
+            --name "$FUNCTION_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
             --settings \
-              "AzureWebJobsStorage=${{ steps.storage.outputs.connection_string }}" \
+              "AzureWebJobsStorage=$STORAGE_CONN_STR" \
               "FUNCTIONS_WORKER_RUNTIME=dotnet-isolated"
 
       - name: Get SWA deployment token and hostname
         id: swa
         run: |
           TOKEN=$(az staticwebapp secrets list \
-            --name "${{ inputs.app_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
             --query "properties.apiKey" -o tsv)
           echo "::add-mask::$TOKEN"
           echo "deployment_token=$TOKEN" >> $GITHUB_OUTPUT
 
           HOSTNAME=$(az staticwebapp show \
-            --name "${{ inputs.app_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
+            --name "$APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
             --query defaultHostname -o tsv)
           echo "hostname=$HOSTNAME" >> $GITHUB_OUTPUT
 
@@ -113,60 +125,61 @@ jobs:
         id: func
         run: |
           FUNC_HOSTNAME=$(az functionapp show \
-            --name "${{ inputs.function_app_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
+            --name "$FUNCTION_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
             --query defaultHostName -o tsv)
           echo "hostname=$FUNC_HOSTNAME" >> $GITHUB_OUTPUT
 
       - name: Resolve API URL
         id: urls
+        env:
+          FUNC_HOSTNAME: ${{ steps.func.outputs.hostname }}
         run: |
-          FUNC_HOSTNAME="${{ steps.func.outputs.hostname }}"
           API_URL="https://$FUNC_HOSTNAME/api"
           echo "api_url=$API_URL" >> $GITHUB_OUTPUT
 
       - name: Configure CORS on Function App
+        env:
+          SWA_HOSTNAME: ${{ steps.swa.outputs.hostname }}
         run: |
-          SWA_HOSTNAME="${{ steps.swa.outputs.hostname }}"
-          DOMAIN="${{ inputs.custom_domain }}"
-
           az functionapp cors add \
-            --name "${{ inputs.function_app_name }}" \
-            --resource-group "${{ inputs.resource_group }}" \
+            --name "$FUNCTION_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
             --allowed-origins "https://$SWA_HOSTNAME"
 
-          if [ -n "$DOMAIN" ]; then
+          if [ -n "$CUSTOM_DOMAIN" ]; then
             az functionapp cors add \
-              --name "${{ inputs.function_app_name }}" \
-              --resource-group "${{ inputs.resource_group }}" \
-              --allowed-origins "https://$DOMAIN"
+              --name "$FUNCTION_APP_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --allowed-origins "https://$CUSTOM_DOMAIN"
             az functionapp cors add \
-              --name "${{ inputs.function_app_name }}" \
-              --resource-group "${{ inputs.resource_group }}" \
-              --allowed-origins "https://www.$DOMAIN"
+              --name "$FUNCTION_APP_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --allowed-origins "https://www.$CUSTOM_DOMAIN"
           fi
 
       - name: Save secrets to GitHub
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           SWA_TOKEN: ${{ steps.swa.outputs.deployment_token }}
+          API_URL: ${{ steps.urls.outputs.api_url }}
         run: |
           printf '%s' "$SWA_TOKEN" | gh secret set SWA_DEPLOYMENT_TOKEN \
-            --repo "${{ github.repository }}"
+            --repo "$GITHUB_REPOSITORY"
 
-          printf '%s' "${{ steps.urls.outputs.api_url }}" | gh secret set FUNCTIONS_API_URL \
-            --repo "${{ github.repository }}"
+          printf '%s' "$API_URL" | gh secret set FUNCTIONS_API_URL \
+            --repo "$GITHUB_REPOSITORY"
 
-          printf '%s' "${{ inputs.function_app_name }}" | gh secret set AZURE_FUNCTION_APP_NAME \
-            --repo "${{ github.repository }}"
+          printf '%s' "$FUNCTION_APP_NAME" | gh secret set AZURE_FUNCTION_APP_NAME \
+            --repo "$GITHUB_REPOSITORY"
 
 
       - name: Summary
+        env:
+          SWA_HOSTNAME: ${{ steps.swa.outputs.hostname }}
+          API_URL: ${{ steps.urls.outputs.api_url }}
         run: |
-          HOSTNAME="${{ steps.swa.outputs.hostname }}"
-          FUNC_HOSTNAME="${{ steps.func.outputs.hostname }}"
-          API_URL="${{ steps.urls.outputs.api_url }}"
-          DOMAIN="${{ inputs.custom_domain }}"
+          HOSTNAME="$SWA_HOSTNAME"
 
           echo "## Provisioning complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -176,15 +189,15 @@ jobs:
           echo "| **API URL** | $API_URL |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "GitHub secrets have been set automatically." >> $GITHUB_STEP_SUMMARY
-          if [ -n "$DOMAIN" ]; then
+          if [ -n "$CUSTOM_DOMAIN" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "## Custom domain — action required" >> $GITHUB_STEP_SUMMARY
             echo "Add these DNS records first, then run **Set Custom Domain**:" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "| Type | Host | Value |" >> $GITHUB_STEP_SUMMARY
             echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
-            echo "| CNAME | \`$DOMAIN\` | \`$HOSTNAME\` |" >> $GITHUB_STEP_SUMMARY
-            echo "| CNAME | \`www.$DOMAIN\` | \`$HOSTNAME\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| CNAME | \`$CUSTOM_DOMAIN\` | \`$HOSTNAME\` |" >> $GITHUB_STEP_SUMMARY
+            echo "| CNAME | \`www.$CUSTOM_DOMAIN\` | \`$HOSTNAME\` |" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Push to \`master\` (or trigger **Deploy** manually) to publish the app." >> $GITHUB_STEP_SUMMARY

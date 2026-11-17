@@ -1,0 +1,13 @@
+{ "test": "python -I C:/Users/elici/AppData/Local/Temp/claude/abad4d2d2f6bcd2d/41501319-ac2a-40b7-9c4d-6a53fd059269/scratchpad/wfcheck.py plan",
+  "breaks": [
+    { "id": "B1", "description": "AC1: input interpolated back into run (Register custom domain)", "file": ".github/workflows/set-custom-domain.yml",
+      "find": "--hostname \"$CUSTOM_DOMAIN\"", "replace": "--hostname \"${{ inputs.custom_domain }}\"" },
+    { "id": "B2", "description": "AC2: deploy token widened to contents: write", "file": ".github/workflows/deploy.yml",
+      "find": "contents: read", "replace": "contents: write" },
+    { "id": "B3", "description": "AC3: misspelled variable in CORS origin (P1 example)", "file": ".github/workflows/provision.yml",
+      "find": "\"https://www.$CUSTOM_DOMAIN\"", "replace": "\"https://www.$CUSTOM_DOMIAN\"" },
+    { "id": "B4", "description": "AC3: env maps the wrong input", "file": ".github/workflows/set-custom-domain.yml",
+      "find": "APP_NAME: ${{ inputs.app_name }}", "replace": "APP_NAME: ${{ inputs.function_app_name }}" },
+    { "id": "B5", "description": "AC3: custom-domain CORS condition inverted", "file": ".github/workflows/provision.yml",
+      "find": "if [ -n \"$CUSTOM_DOMAIN\" ]; then\n            az", "replace": "if [ -z \"$CUSTOM_DOMAIN\" ]; then\n            az" }
+  ] }
