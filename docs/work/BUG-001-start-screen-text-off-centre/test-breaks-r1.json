@@ -1,0 +1,8 @@
+{ "test": "dotnet test tests/BlazorInvaders.Tests --nologo",
+  "breaks": [
+  {"id":"B1","description":"AC1 centre x off by 20","file":"src/core/Rendering/SceneBuilder.cs","find":"Text(text, width / 2, y, fontSize, color, centered: true);","replace":"Text(text, width / 2 + 20, y, fontSize, color, centered: true);"},
+  {"id":"B2","description":"AC1 centre flag dropped","file":"src/core/Rendering/SceneBuilder.cs","find":"Text(text, width / 2, y, fontSize, color, centered: true);","replace":"Text(text, width / 2, y, fontSize, color, centered: false);"},
+  {"id":"B3","description":"AC4 start line y moved","file":"src/core/Rendering/SceneBuilder.cs","find":"CenteredText(\"Press space to start\", w, 220, 28, White);","replace":"CenteredText(\"Press space to start\", w, 221, 28, White);"},
+  {"id":"B4","description":"AC4 font size changed","file":"src/core/Rendering/SceneBuilder.cs","find":"CenteredText(\"P / Escape to pause\", w, 265, 18, \"#888\");","replace":"CenteredText(\"P / Escape to pause\", w, 265, 20, \"#888\");"},
+  {"id":"B5","description":"AC2 pause overlay off-centre","file":"src/core/Rendering/SceneBuilder.cs","find":"CenteredText(\"PAUSED\", w, h / 2 - 10, 48, White);","replace":"Text(\"PAUSED\", w / 2 + 5, h / 2 - 10, 48, White, centered: true);"}
+  ]}

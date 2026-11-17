@@ -9,6 +9,7 @@
 
 | ID | Name | Type | Size | Status | Branch | Opened | Updated | Cost |
 |----|------|------|------|--------|--------|--------|---------|------|
+| BUG-001 | Start screen text off-centre | BUG | S | done | devagents/BUG-001-start-screen-text-off-centre | 2026-11-17 | 2026-11-17 | $4.76 |
 | CHORE-010 | Deduplicate test helpers | CHORE | S | done | devagents/CHORE-010-deduplicate-test-helpers | 2026-11-17 | 2026-11-17 | $2.59 |
 | CHORE-009 | Enforce formatting | CHORE | M | done | devagents/CHORE-009-enforce-formatting | 2026-11-17 | 2026-11-17 | $3.53 |
 | CHORE-007 | Harden GitHub workflows | CHORE | S | done | devagents/CHORE-007-harden-github-workflows | 2026-11-17 | 2026-11-17 | $3.19 |

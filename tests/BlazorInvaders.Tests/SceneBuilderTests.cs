@@ -35,6 +35,41 @@ public class SceneBuilderTests
     private static List<string> Texts(Scene scene) =>
         Decode(scene).Where(c => c.op == Scene.OpText).Select(c => scene.Strings[c.args[0]]).ToList();
 
+    private static List<(string Text, int X, int Y, string Font, bool Centred)> TextCommands(Scene scene) =>
+        Decode(scene).Where(c => c.op == Scene.OpText)
+            .Select(c => (scene.Strings[c.args[0]], c.args[1], c.args[2], scene.Strings[c.args[3]], c.args[5] == 1))
+            .ToList();
+
+    /// <summary>Asserts a line is drawn centred: its anchor is the canvas centre (width / 2).</summary>
+    private static (string Text, int X, int Y, string Font, bool Centred) AssertCentred(Scene scene, int width, string text)
+    {
+        var line = Assert.Single(TextCommands(scene), t => t.Text == text);
+        Assert.True(line.Centred, $"'{text}' is not drawn centred");
+        Assert.Equal(width / 2, line.X);
+        return line;
+    }
+
+    private static GameEngine EngineOfWidth(int width) => new(width, Height, new Random(42));
+
+    /// <summary>Attract states cycle every 4 s; the first build at 1 ms starts the cycle.</summary>
+    private static Scene AttractState(SceneBuilder builder, GameEngine engine, int state)
+    {
+        float[] times = { 1, 4002, 8003, 12004 };
+        Scene? scene = null;
+        for (var i = 0; i <= state; i++)
+            scene = builder.Build(engine, times[i]);
+        return scene!;
+    }
+
+    /// <summary>Lets the ship sit still, one 60 Hz frame (about 16.7 ms) at a time, until <paramref name="done"/>. Returns the game time reached.</summary>
+    private static float IdleUntil(GameEngine engine, Func<bool> done)
+    {
+        var t = 0f;
+        while (!done() && t < 180_000)
+            t = Run(engine, t, 16);
+        return t;
+    }
+
     [Fact]
     public void AttractScene_ShowsHeaderAndScoreTable()
     {
@@ -283,5 +318,195 @@ public class SceneBuilderTests
 
         Assert.Equal(55, scene.March);
         Assert.True(((SoundEffect)scene.Sounds).HasFlag(SoundEffect.Shoot));
+    }
+
+    // Centring: every centred message is drawn at width / 2 (BUG-001). Widths 870 and an odd 801.
+
+    [Theory]
+    [InlineData(870, false)]
+    [InlineData(801, false)]
+    [InlineData(870, true)]
+    [InlineData(801, true)]
+    public void StartScreen_LinesAreCentred_WithUnchangedTextFontAndY(int width, bool touch)
+    {
+        var lines = touch
+            ? new[] { ("Use the arrow buttons to move, FIRE to shoot", 160, "26px Orbitron"), ("Tap the screen to start", 220, "28px Orbitron"), ("II to pause", 265, "18px Orbitron") }
+            : new[] { ("Use arrow keys to move, space to fire", 160, "28px Orbitron"), ("Press space to start", 220, "28px Orbitron"), ("P / Escape to pause", 265, "18px Orbitron") };
+        var scene = AttractState(new SceneBuilder { TouchControls = touch }, EngineOfWidth(width), 2);
+
+        foreach (var (text, y, font) in lines)
+        {
+            var line = AssertCentred(scene, width, text);
+            Assert.Equal(y, line.Y);
+            Assert.Equal(font, line.Font);
+        }
+    }
+
+    [Theory]
+    [InlineData(870)]
+    [InlineData(801)]
+    public void ScoreTable_TitleIsCentred(int width)
+    {
+        var scene = AttractState(new SceneBuilder(), EngineOfWidth(width), 0);
+
+        AssertCentred(scene, width, "SCORE ADVANCE TABLE");
+    }
+
+    [Theory]
+    [InlineData(870)]
+    [InlineData(801)]
+    public void Leaderboard_LinesAreCentred(int width)
+    {
+        var engine = EngineOfWidth(width);
+        engine.SetLeaderboard(new[] { new HighScore { Name = "ACE", Score = 1000 }, new HighScore { Name = "BOB", Score = 500 } });
+
+        var scene = AttractState(new SceneBuilder(), engine, 1);
+
+        AssertCentred(scene, width, "TOP SCORES");
+        AssertCentred(scene, width, "1.  ACE   01000");
+        AssertCentred(scene, width, "2.  BOB   00500");
+    }
+
+    [Theory]
+    [InlineData(870)]
+    [InlineData(801)]
+    public void EmptyLeaderboard_SaysNoScoresYet_Centred(int width)
+    {
+        var scene = AttractState(new SceneBuilder(), EngineOfWidth(width), 1);
+
+        AssertCentred(scene, width, "NO SCORES YET");
+    }
+
+    [Theory]
+    [InlineData(870, false)]
+    [InlineData(801, false)]
+    [InlineData(870, true)]
+    [InlineData(801, true)]
+    public void DailyAttractCard_LinesAreCentred(int width, bool touch)
+    {
+        var builder = new SceneBuilder
+        {
+            TouchControls = touch,
+            TodaysChallenge = new DailyChallenge(new DateOnly(2026, 10, 13), DailyModifier.Glass),
+        };
+        var scene = AttractState(builder, EngineOfWidth(width), 3);
+
+        AssertCentred(scene, width, "DAILY CHALLENGE");
+        AssertCentred(scene, width, "2026-10-13");
+        AssertCentred(scene, width, "ONE LIFE, DOUBLE POINTS");
+        AssertCentred(scene, width, "Same game for everyone today");
+        AssertCentred(scene, width, touch ? "Tap D to play" : "Press D to play");
+    }
+
+    [Theory]
+    [InlineData(870)]
+    [InlineData(801)]
+    public void WaveBanner_IsCentred(int width)
+    {
+        var engine = EngineOfWidth(width);
+        engine.Start(0);
+
+        AssertCentred(new SceneBuilder().Build(engine, 0), width, "WAVE 1");
+    }
+
+    [Theory]
+    [InlineData(870)]
+    [InlineData(801)]
+    public void BossBanner_IsCentred(int width)
+    {
+        var engine = EngineOfWidth(width);
+        engine.Start(0, startWave: 5);
+
+        AssertCentred(new SceneBuilder().Build(engine, 0), width, "BOSS WAVE");
+    }
+
+    [Theory]
+    [InlineData(870)]
+    [InlineData(801)]
+    public void DailyBanner_AndHudTag_AreCentred(int width)
+    {
+        var engine = EngineOfWidth(width);
+        engine.Start(0, daily: new DailyChallenge(new DateOnly(2026, 10, 13), DailyModifier.NoBunkers));
+
+        var scene = new SceneBuilder().Build(engine, 0);
+
+        AssertCentred(scene, width, "DAILY CHALLENGE");
+        AssertCentred(scene, width, "2026-10-13  ·  NO BUNKERS");
+        AssertCentred(scene, width, "DAILY  ·  NO BUNKERS");
+    }
+
+    [Theory]
+    [InlineData(870)]
+    [InlineData(801)]
+    public void PauseOverlay_IsCentred(int width)
+    {
+        var engine = EngineOfWidth(width);
+        engine.Start(0);
+        engine.TogglePause();
+
+        var scene = new SceneBuilder().Build(engine, 0);
+
+        AssertCentred(scene, width, "PAUSED");
+        AssertCentred(scene, width, "Press P to resume");
+    }
+
+    [Theory]
+    [InlineData(870, false)]
+    [InlineData(801, false)]
+    [InlineData(870, true)]
+    [InlineData(801, true)]
+    public void GameOverScreen_IsCentred(int width, bool touch)
+    {
+        var engine = EngineOfWidth(width);
+        engine.Start(0);
+        var t = IdleUntil(engine, () => engine.GameOver);
+        Assert.True(engine.GameOver);
+
+        var scene = new SceneBuilder { TouchControls = touch }.Build(engine, t);
+
+        AssertCentred(scene, width, "GAME OVER");
+        AssertCentred(scene, width, touch ? "Tap to start a new game" : "Press space to start a new game");
+    }
+
+    [Theory]
+    [InlineData(870)]
+    [InlineData(801)]
+    public void GameOverScreen_DailyHint_IsCentred(int width)
+    {
+        var engine = EngineOfWidth(width);
+        engine.Start(0);
+        var t = IdleUntil(engine, () => engine.GameOver);
+        Assert.True(engine.GameOver);
+
+        var scene = new SceneBuilder { TodaysChallenge = new DailyChallenge(new DateOnly(2026, 10, 13), DailyModifier.Glass) }.Build(engine, t);
+
+        AssertCentred(scene, width, "D for today's challenge");
+    }
+
+    [Theory]
+    [InlineData(870)]
+    [InlineData(801)]
+    public void YouWereHit_IsCentred(int width)
+    {
+        var engine = EngineOfWidth(width);
+        engine.Start(0);
+        var t = IdleUntil(engine, () => engine.LostALife);
+        Assert.True(engine.LostALife);
+
+        AssertCentred(new SceneBuilder().Build(engine, t), width, "You were hit!");
+    }
+
+    [Theory]
+    [InlineData(870)]
+    [InlineData(801)]
+    public void PerfectBonus_IsCentred(int width)
+    {
+        var engine = EngineOfWidth(width);
+        engine.Start(0, startWave: 5);
+        engine.Boss!.Hp = 1;
+        var t = ChaseAndShootBoss(engine);
+        Assert.True(engine.ShowPerfectBonus);
+
+        AssertCentred(new SceneBuilder().Build(engine, t), width, $"PERFECT!  +{engine.PerfectWaveBonus}");
     }
 }
