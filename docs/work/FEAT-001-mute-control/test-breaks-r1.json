@@ -1,0 +1,7 @@
+{"test":"dotnet test tests/BlazorInvaders.Tests --nologo -v q","breaks":[
+{"id":"B1","description":"AC4 only exact true mutes: Ordinal to OrdinalIgnoreCase","file":"src/core/GameObjects/SoundSetting.cs","find":"StringComparison.Ordinal","replace":"StringComparison.OrdinalIgnoreCase"},
+{"id":"B2","description":"AC1 toggle does nothing","file":"src/core/GameObjects/SoundSetting.cs","find":"Muted = !Muted;","replace":"Muted = Muted;"},
+{"id":"B3","description":"AC4 stored value inverted","file":"src/core/GameObjects/SoundSetting.cs","find":"Muted ? MutedValue : UnmutedValue","replace":"Muted ? UnmutedValue : MutedValue"},
+{"id":"B4","description":"AC3 scene never reports muted","file":"src/core/Rendering/SceneBuilder.cs","find":"Muted = Sound.Muted,","replace":"Muted = false,"},
+{"id":"B5","description":"AC3 HUD text renamed","file":"src/core/Rendering/SceneBuilder.cs","find":"Text(\"SOUND OFF\", w - 120, 45, 14, \"#888\")","replace":"Text(\"SOUND\", w - 120, 45, 14, \"#888\")"}
+]}

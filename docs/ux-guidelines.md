@@ -1,6 +1,6 @@
 # UX guidelines: Blazor Invaders
 
-**Last updated:** 2026-11-17, by CHORE-014
+**Last updated:** 2026-11-18, by FEAT-001
 
 ## Product and users
 A Space Invaders game in the browser, installable as a PWA that also plays offline. Players use a desktop with a keyboard or a phone with touch (D1). Their top tasks are playing a game (standard or today's challenge), entering initials after a qualifying score, and viewing the leaderboards (all-time and today's challenge). There are no accounts. Personal bests are kept on the device.
@@ -44,15 +44,15 @@ A Space Invaders game in the browser, installable as a PWA that also plays offli
 | UX26 | There are two routes: `/` (the game) and `/leaderboard`. Every new screen has a visible way back to the game. | code |
 | UX27 | There are no confirmation dialogs. Starting, pausing and leaving happen at once, and new features keep it that way unless an action loses data. | default rules, code |
 | UX28 | Progress lives on the device (`localStorage`: personal best, today's best, pending scores) and is shown above the game. There is no sign-in. | code |
-| UX29 | The game has one mute control (planned, not built yet). It toggles all sound, the march included, and takes effect at once. It works from the keyboard with one key that has no modifier (added to UX31) and from a touch button (UX33, UX37). Its current state shows on screen, and on the button through `aria-pressed`. The setting is remembered on the device (UX28). Sound is on by default. | D3, default rules |
+| UX29 | The game has one mute control. It toggles all sound, the march included, and takes effect at once. It works from the keyboard with the M key (no modifier, UX31) and from the touch button "Mute" (UX33, UX37). Its current state shows on screen as "SOUND OFF" text at the top right while muted, and on the button through `aria-pressed` with a struck-through letter. The setting is remembered on the device (UX28). Sound is on by default. | D3, default rules |
 
 ## Accessibility
 | ID | Guideline | Source |
 |----|-----------|--------|
 | UX30 | The target is WCAG 2.2 AA for all HTML UI: pages, dialogs, touch controls and page text. The real-time canvas playfield is exempt where a game cannot comply, but it follows UX31, UX34, UX35 and UX36. | D1 |
-| UX31 | The whole game can be played with the keyboard: the arrow keys move, Space fires and starts, P or Escape pauses, and D starts today's challenge. Keys are handled only when the playfield has focus (`tabindex="0"`), so Tab still moves focus on and browser shortcuts still work. New keys avoid Ctrl, Alt, Meta and Tab combinations. | code (`game.js`) |
+| UX31 | The whole game can be played with the keyboard: the arrow keys move, Space fires and starts, P or Escape pauses, D starts today's challenge, and M toggles sound. Keys are handled only when the playfield has focus (`tabindex="0"`), so Tab still moves focus on and browser shortcuts still work. New keys avoid Ctrl, Alt, Meta and Tab combinations. | code (`game.js`) |
 | UX32 | Every focusable HTML element, the playfield included, shows a visible focus indicator (WCAG 2.4.7). On touch screens the playfield shows none, because the on-screen controls replace it (CHORE-014 D2). | WCAG 2.2 AA, CHORE-014 D2 |
-| UX33 | Every input and every icon-only button has an accessible name. The touch buttons use `aria-label`, such as "Move left" and "Fire". Each initials input has its own name, for example "Initial 1 of 3". | code, WCAG 4.1.2, D2 |
+| UX33 | Every input and every icon-only button has an accessible name. The touch buttons use `aria-label`, such as "Move left", "Fire" and "Mute". Toggle buttons also carry `aria-pressed`. Each initials input has its own name, for example "Initial 1 of 3". | code, WCAG 4.1.2, D2 |
 | UX34 | Text contrast is at least 4.5:1, or 3:1 for large text. Control boundaries are at least 3:1 against their actual background, including the gradient. | WCAG 1.4.3, 1.4.11 |
 | UX35 | Colour is never the only signal. Power-ups carry a letter and a HUD name, and the daily mode shows a "DAILY" label. A new state gets text or shape as well as colour. | code, default rules |
 | UX36 | Screen shake and other motion that is not part of gameplay are skipped when `prefers-reduced-motion: reduce` is set (`effects.js`). Nothing flashes more than 3 times a second. | code, WCAG 2.3.1 |
@@ -72,14 +72,14 @@ A Space Invaders game in the browser, installable as a PWA that also plays offli
 | ID | Guideline | Source |
 |----|-----------|--------|
 | UX50 | The playfield keeps its 870×500 logical size (87:50) and scales to fit. It never reflows. The page column steps at 30em, 35em and 60em (`.cover-container`). | code (`app.css`) |
-| UX51 | The touch layout is chosen by `(pointer: coarse)`, not by width. The touch pads sit beside the playfield in landscape and below it in portrait. The title and footer are hidden when the height is 600 px or less. | code |
+| UX51 | The touch layout is chosen by `(pointer: coarse)`, not by width. The touch pads sit beside the playfield in landscape and below it in portrait. The small buttons (Pause, Daily, Mute) sit in a 2x2 grid beside Fire. The title and footer are hidden when the height is 600 px or less. | code |
 | UX52 | The PWA runs fullscreen, landscape is preferred, the theme colour is black, and it works offline. | `manifest.webmanifest`, code |
 | UX53 | Supported browsers are the current evergreen ones on desktop, plus Safari and Chrome on mobile. Newer CSS gets a fallback first, as `100vh` comes before `100dvh`. | default rules, code |
 
 ## Known gaps
 None open. CHORE-014 fixed the five gaps D2 listed.
 
-Not built yet, each in its own later item (D3): the mute control (UX29) and the larger phone text (UX14).
+Not built yet, in its own later item (D3): the larger phone text (UX14).
 
 ## Open questions
 - **Phone text size:** D3 asks for larger phone text but gives no size. The 12 CSS px in UX14 is my figure, taken from the platforms' minimum legible sizes (for example, Apple's 11 pt). Please confirm it or give another size when that item is planned.
@@ -95,3 +95,4 @@ Not built yet, each in its own later item (D3): the mute control (UX29) and the 
   - Removed the resolved open questions.
 - 2026-11-17 CHORE-014: fixed the five known gaps (UX24, UX32, UX33, UX38, UX43).
 - 2026-11-17 CHORE-008: removed the toast package reference from D4 and UX20; no toast package is used.
+- 2026-11-18 FEAT-001: built the mute control (UX29); M key in UX31, "Mute" in UX33, small-button grid in UX51; removed it from Known gaps.

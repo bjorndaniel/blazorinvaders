@@ -290,6 +290,49 @@ public class SceneBuilderTests
         Assert.Contains(expected, Texts(scene));
     }
 
+    [Theory]
+    [InlineData(false, "P / Escape to pause  ·  M toggles sound")]
+    [InlineData(true, "II to pause  ·  M toggles sound")]
+    public void AttractInstructions_NameTheMuteKey(bool touch, string expected)
+    {
+        var engine = NewEngine();
+        var builder = new SceneBuilder { TouchControls = touch };
+
+        builder.Build(engine, 1);
+        builder.Build(engine, 4002);
+        var scene = builder.Build(engine, 8003);
+
+        Assert.Contains(expected, Texts(scene));
+    }
+
+    [Theory]
+    [InlineData("attract")]
+    [InlineData("playing")]
+    [InlineData("paused")]
+    public void MutedScene_ShowsSoundOffAndReportsMuted(string state)
+    {
+        var engine = NewEngine();
+        if (state != "attract")
+            engine.Start(0);
+        if (state == "paused")
+            engine.TogglePause();
+        var builder = new SceneBuilder { Sound = SoundSetting.FromStored("true") };
+
+        var scene = builder.Build(engine, 0);
+
+        Assert.Contains("SOUND OFF", Texts(scene));
+        Assert.True(scene.Muted);
+    }
+
+    [Fact]
+    public void UnmutedScene_HasNoSoundOff()
+    {
+        var scene = new SceneBuilder().Build(NewEngine(), 0);
+
+        Assert.DoesNotContain("SOUND OFF", Texts(scene));
+        Assert.False(scene.Muted);
+    }
+
     [Fact]
     public void DailyGame_ShowsChallengeBannerAndHudTag()
     {
@@ -345,8 +388,8 @@ public class SceneBuilderTests
     public void StartScreen_LinesAreCentred_WithUnchangedTextFontAndY(int width, bool touch)
     {
         var lines = touch
-            ? new[] { ("Use the arrow buttons to move, FIRE to shoot", 160, "26px Orbitron"), ("Tap the screen to start", 220, "28px Orbitron"), ("II to pause", 265, "18px Orbitron") }
-            : new[] { ("Use arrow keys to move, space to fire", 160, "28px Orbitron"), ("Press space to start", 220, "28px Orbitron"), ("P / Escape to pause", 265, "18px Orbitron") };
+            ? new[] { ("Use the arrow buttons to move, FIRE to shoot", 160, "26px Orbitron"), ("Tap the screen to start", 220, "28px Orbitron"), ("II to pause  ·  M toggles sound", 265, "18px Orbitron") }
+            : new[] { ("Use arrow keys to move, space to fire", 160, "28px Orbitron"), ("Press space to start", 220, "28px Orbitron"), ("P / Escape to pause  ·  M toggles sound", 265, "18px Orbitron") };
         var scene = AttractState(new SceneBuilder { TouchControls = touch }, EngineOfWidth(width), 2);
 
         foreach (var (text, y, font) in lines)

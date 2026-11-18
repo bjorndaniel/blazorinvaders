@@ -27,6 +27,9 @@ namespace BlazorInvaders.Rendering
         /// <summary>True while the game is paused, so effects freeze too.</summary>
         public bool Paused { get; init; }
 
+        /// <summary>All sound off; game.js silences its master gain. Reaches JS as muted.</summary>
+        public bool Muted { get; init; }
+
         /// <summary><see cref="GameObjects.SoundEffect"/> flags to play this frame.</summary>
         public int Sounds { get; init; }
 

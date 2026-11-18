@@ -57,6 +57,9 @@ namespace BlazorInvaders.Rendering
         /// <summary>Word on-screen instructions for the touch buttons instead of the keyboard.</summary>
         public bool TouchControls { get; set; }
 
+        /// <summary>The one copy of the mute state; the page toggles it and stores it.</summary>
+        public SoundSetting Sound { get; set; } = new();
+
         /// <summary>Shown on the attract screen; null leaves the daily card out.</summary>
         public DailyChallenge? TodaysChallenge { get; set; }
 
@@ -124,6 +127,10 @@ namespace BlazorInvaders.Rendering
                 CenteredText(TouchControls ? "Tap II to resume" : "Press P to resume", w, h / 2 + 40, 20, White);
             }
 
+            // After the pause overlay so it is not dimmed
+            if (Sound.Muted)
+                Text("SOUND OFF", w - 120, 45, 14, "#888");
+
             var events = EncodeEvents(engine.TakeEvents());
             var sounds = engine.TakeSounds(out var march);
             return new Scene
@@ -132,6 +139,7 @@ namespace BlazorInvaders.Rendering
                 Strings = _strings.ToArray(),
                 Events = events,
                 Paused = engine.Paused,
+                Muted = Sound.Muted,
                 Sounds = (int)sounds,
                 March = march,
             };
@@ -325,7 +333,7 @@ namespace BlazorInvaders.Rendering
                 case 2 when TouchControls:
                     CenteredText("Use the arrow buttons to move, FIRE to shoot", w, 160, 26, White);
                     CenteredText("Tap the screen to start", w, 220, 28, White);
-                    CenteredText("II to pause", w, 265, 18, "#888");
+                    CenteredText("II to pause  ·  M toggles sound", w, 265, 18, "#888");
                     break;
 
                 case 3 when TodaysChallenge is { } daily:
@@ -339,7 +347,7 @@ namespace BlazorInvaders.Rendering
                 default:
                     CenteredText("Use arrow keys to move, space to fire", w, 160, 28, White);
                     CenteredText("Press space to start", w, 220, 28, White);
-                    CenteredText("P / Escape to pause", w, 265, 18, "#888");
+                    CenteredText("P / Escape to pause  ·  M toggles sound", w, 265, 18, "#888");
                     break;
             }
         }

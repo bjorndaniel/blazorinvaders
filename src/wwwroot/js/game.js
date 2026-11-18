@@ -10,7 +10,7 @@ const OP_SPRITE = 1, OP_RECT = 2, OP_TEXT = 3, OP_DIAMOND = 4, OP_CIRCLE = 5, OP
 const SOUND_SHOOT = 1, SOUND_ALIEN_DEATH = 2, SOUND_PLAYER_DEATH = 4, SOUND_MOTHERSHIP = 8, SOUND_STOP_MARCH = 16,
     SOUND_POWER_UP = 32, SOUND_SHIELD_BLOCK = 64, SOUND_BOSS_HIT = 128, SOUND_BOSS_DEFEATED = 256;
 // Held controls must match GameInput in Enumerations.cs; one-shot presses must match Index.razor
-const INPUT_LEFT = 1, INPUT_RIGHT = 2, INPUT_FIRE = 4, INPUT_START = 8, INPUT_PAUSE = 16, INPUT_DAILY = 32;
+const INPUT_LEFT = 1, INPUT_RIGHT = 2, INPUT_FIRE = 4, INPUT_START = 8, INPUT_PAUSE = 16, INPUT_DAILY = 32, INPUT_MUTE = 64;
 const HELD_KEYS = { ArrowLeft: INPUT_LEFT, ArrowRight: INPUT_RIGHT, Space: INPUT_FIRE };
 const PRESS_KEYS = { KeyP: INPUT_PAUSE, Escape: INPUT_PAUSE, KeyD: INPUT_DAILY };
 
@@ -150,6 +150,11 @@ function onKeyDown(e) {
         e.preventDefault();
         keysHeld |= bit;
         if (!e.repeat) pressed |= bit | (bit === INPUT_FIRE ? INPUT_START : 0);
+    } else if (e.code === 'KeyM') {
+        // No modifier, so browser shortcuts like Ctrl+M keep working
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        e.preventDefault();
+        if (!e.repeat) pressed |= INPUT_MUTE;
     } else if (PRESS_KEYS[e.code]) {
         e.preventDefault();
         if (!e.repeat) pressed |= PRESS_KEYS[e.code];
@@ -281,7 +286,8 @@ function createStarLayer(width, height) {
     return layer;
 }
 
-function playSounds({ sounds, march }) {
+function playSounds({ sounds, march, muted }) {
+    audio.setMuted(muted);
     if (march >= 0) audio.march(march);
     // After the march update so a final alien hit can't restart it on game over
     if (sounds & SOUND_STOP_MARCH) audio.stopMarch();
@@ -297,21 +303,30 @@ function playSounds({ sounds, march }) {
 
 const audio = (() => {
     let ctx = null;
+    let master = null;
+    let muted = false;
     let marchInterval = null;
     let marchStep = 0;
     const marchNotes = [160, 130, 105, 85];
 
     function getCtx() {
-        if (!ctx) ctx = new AudioContext();
+        if (!ctx) {
+            ctx = new AudioContext();
+            // Every sound goes through this gain, so muting silences tones already playing
+            master = ctx.createGain();
+            master.gain.value = muted ? 0 : 1;
+            master.connect(ctx.destination);
+        }
         return ctx;
     }
 
     function playTone(freq, duration, type = 'square', vol = 0.3) {
+        if (muted) return;
         const c = getCtx();
         const osc = c.createOscillator();
         const gain = c.createGain();
         osc.connect(gain);
-        gain.connect(c.destination);
+        gain.connect(master);
         osc.type = type;
         osc.frequency.value = freq;
         gain.gain.setValueAtTime(vol, c.currentTime);
@@ -321,13 +336,19 @@ const audio = (() => {
     }
 
     return {
+        setMuted(value) {
+            if (value === muted) return;
+            muted = value;
+            if (master) master.gain.value = muted ? 0 : 1;
+        },
         shoot() { playTone(880, 0.08, 'square', 0.15); },
         alienDeath() {
+            if (muted) return;
             const c = getCtx();
             const osc = c.createOscillator();
             const gain = c.createGain();
             osc.connect(gain);
-            gain.connect(c.destination);
+            gain.connect(master);
             osc.type = 'sawtooth';
             osc.frequency.setValueAtTime(400, c.currentTime);
             osc.frequency.exponentialRampToValueAtTime(40, c.currentTime + 0.35);

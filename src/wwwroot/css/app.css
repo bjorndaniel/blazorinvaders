@@ -259,6 +259,16 @@ body {
     border-color: rgba(255, 80, 80, 0.8);
 }
 
+.touch-btn[aria-pressed="true"] {
+    text-decoration: line-through;
+}
+
+.touch-small-group {
+    display: grid;
+    grid-template-columns: repeat(2, 44px);
+    gap: 8px;
+}
+
 .touch-small {
     width: 44px;
     height: 44px;

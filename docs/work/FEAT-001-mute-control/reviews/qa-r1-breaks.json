@@ -1,0 +1,9 @@
+{"test":"dotnet test tests/BlazorInvaders.Tests --nologo -v q --filter \"FullyQualifiedName~SoundSettingTests|FullyQualifiedName~SceneBuilderTests\"","breaks":[
+{"id":"B1","description":"AC3 HUD condition inverted","file":"src/core/Rendering/SceneBuilder.cs","find":"if (Sound.Muted)","replace":"if (!Sound.Muted)"},
+{"id":"B2","description":"AC3 SOUND OFF hidden while paused","file":"src/core/Rendering/SceneBuilder.cs","find":"if (Sound.Muted)","replace":"if (Sound.Muted && !engine.Paused)"},
+{"id":"B3","description":"AC3 SOUND OFF hidden on attract screen","file":"src/core/Rendering/SceneBuilder.cs","find":"if (Sound.Muted)","replace":"if (Sound.Muted && engine.Started)"},
+{"id":"B4","description":"AC4 any non-empty value other than false mutes","file":"src/core/GameObjects/SoundSetting.cs","find":"string.Equals(stored, MutedValue, StringComparison.Ordinal)","replace":"stored is { Length: > 0 } && stored != UnmutedValue"},
+{"id":"B5","description":"AC4 unmuted stored as empty string (still reads back as sound on)","file":"src/core/GameObjects/SoundSetting.cs","find":"Muted ? MutedValue : UnmutedValue","replace":"Muted ? MutedValue : \"\""},
+{"id":"B6","description":"AC1 toggle only ever mutes","file":"src/core/GameObjects/SoundSetting.cs","find":"Muted = !Muted;","replace":"Muted = true;"},
+{"id":"B7","description":"AC1 keyboard hint drops the M key","file":"src/core/Rendering/SceneBuilder.cs","find":"\"P / Escape to pause  ·  M toggles sound\"","replace":"\"P / Escape to pause\""}
+]}

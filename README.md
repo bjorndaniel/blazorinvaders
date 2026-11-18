@@ -17,7 +17,7 @@ A Space Invaders clone built with Blazor WebAssembly (.NET 10) and an HTML5 canv
 - Last-alien frenzy mode — the final alien moves and fires at maximum speed
 - Perfect wave bonus (+500 pts for clearing a wave without being hit)
 - Explosions, floating scores, screen shake and hit flash; starfield and Web Audio API sound effects
-- Hold arrow keys to move smoothly, hold space to keep firing; pause with P or Escape
+- Hold arrow keys to move smoothly, hold space to keep firing; pause with P or Escape, mute with M
 - Touch controls on phones and tablets; installable as an app that plays offline
 - Personal best stored in localStorage
 - Global top-10 leaderboard (enter initials on game over if you qualify)
