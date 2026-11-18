@@ -128,6 +128,21 @@ public class SceneBuilderTests
         Assert.Contains("PAUSED", Texts(scene));
     }
 
+    [Theory]
+    [InlineData(false, "Press P to resume", "Tap II to resume")]
+    [InlineData(true, "Tap II to resume", "Press P to resume")]
+    public void PausedScene_InstructionMatchesTheControls(bool touch, string expected, string other)
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        engine.TogglePause();
+
+        var scene = new SceneBuilder { TouchControls = touch }.Build(engine, 0);
+
+        Assert.Contains(expected, Texts(scene));
+        Assert.DoesNotContain(other, Texts(scene));
+    }
+
     [Fact]
     public void Scene_MarksEffectsLayerOnce()
     {

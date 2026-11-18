@@ -1,0 +1,6 @@
+{"test":"dotnet test tests/BlazorInvaders.Tests --nologo -v q",
+ "breaks":[
+  {"id":"B1","description":"C1: stale failing load sets the failed state (request guard dropped in catch)","file":"src/Pages/Leaderboard.razor","find":"_loadFailed = true;","replace":"{ } _loadFailed = true;"},
+  {"id":"B2","description":"U1: retry no longer moves focus to the selected tab","file":"src/Pages/Leaderboard.razor","find":"await (_daily ? _dailyTab : _allTimeTab).FocusAsync();","replace":"await Task.CompletedTask;"},
+  {"id":"B3","description":"D2: touch rule no longer matches, ring shows on touch","file":"src/wwwroot/css/app.css","find":"so the playfield shows no focus ring */","replace":"so the playfield shows no focus ring */ .never"}
+ ]}

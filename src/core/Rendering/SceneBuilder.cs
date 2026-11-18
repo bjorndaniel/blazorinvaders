@@ -121,7 +121,7 @@ namespace BlazorInvaders.Rendering
             {
                 Rect(0, 0, w, h, "rgba(0,0,0,0.6)");
                 CenteredText("PAUSED", w, h / 2 - 10, 48, White);
-                CenteredText("Press P to resume", w, h / 2 + 40, 20, White);
+                CenteredText(TouchControls ? "Tap II to resume" : "Press P to resume", w, h / 2 + 40, 20, White);
             }
 
             var events = EncodeEvents(engine.TakeEvents());

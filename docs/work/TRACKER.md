@@ -9,6 +9,7 @@
 
 | ID | Name | Type | Size | Status | Branch | Opened | Updated | Cost |
 |----|------|------|------|--------|--------|--------|---------|------|
+| CHORE-014 | Fix the five UX gaps | CHORE | S | done | devagents/CHORE-014-fix-ux-gaps | 2026-11-17 | 2026-11-18 | $10.05 |
 | BUG-001 | Start screen text off-centre | BUG | S | done | devagents/BUG-001-start-screen-text-off-centre | 2026-11-17 | 2026-11-17 | $4.76 |
 | CHORE-010 | Deduplicate test helpers | CHORE | S | done | devagents/CHORE-010-deduplicate-test-helpers | 2026-11-17 | 2026-11-17 | $2.59 |
 | CHORE-012 | Cap the leaderboard read | CHORE | M | done | devagents/CHORE-012-cap-leaderboard-read | 2026-11-17 | 2026-11-17 | $9.40 |

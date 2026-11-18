@@ -1,6 +1,7 @@
 @page "/leaderboard"
 @using BlazorInvaders.GameObjects
 @using BlazorInvaders.Rendering
+@implements IDisposable
 @inject HttpClient Http
 @inject IConfiguration Config
 
@@ -13,9 +14,9 @@
 <div class="row justify-content-center">
     <div class="col-auto">
         <div class="btn-group mb-3" role="tablist">
-            <button type="button" role="tab" aria-selected="@(!_daily)"
+            <button type="button" role="tab" aria-selected="@(!_daily)" @ref="_allTimeTab"
                     class="btn @(_daily ? "btn-outline-light" : "btn-light")" @onclick="() => ShowAsync(daily: false)">All-time</button>
-            <button type="button" role="tab" aria-selected="@_daily"
+            <button type="button" role="tab" aria-selected="@_daily" @ref="_dailyTab"
                     class="btn @(_daily ? "btn-light" : "btn-outline-light")" @onclick="() => ShowAsync(daily: true)">Today's challenge</button>
         </div>
 
@@ -26,7 +27,12 @@
             </p>
         }
 
-        @if (_scores == null)
+        @if (_loadFailed)
+        {
+            <p role="alert">Could not load the leaderboard. Check your connection and try again.</p>
+            <button type="button" class="btn btn-secondary mt-2" @onclick="RetryAsync">Try again</button>
+        }
+        else if (_scores == null)
         {
             <p>Loading...</p>
         }
@@ -66,27 +72,46 @@
     private readonly DailyChallenge _today = DailyChallenge.Today();
     private List<HighScore>? _scores;
     private bool _daily;
+    private bool _loadFailed;
+    private ElementReference _allTimeTab;
+    private ElementReference _dailyTab;
+    private int _request;
+    private bool _disposed;
 
     protected override Task OnInitializedAsync() => ShowAsync(daily: false);
+
+    private async Task RetryAsync()
+    {
+        await ShowAsync(daily: _daily);
+        // The Try again button leaves the page while the board loads, so focus moves to the selected tab.
+        // The user may have left the page during the load, and the element is gone then.
+        if (!_disposed)
+            await (_daily ? _dailyTab : _allTimeTab).FocusAsync();
+    }
+
+    public void Dispose() => _disposed = true;
 
     private async Task ShowAsync(bool daily)
     {
         _daily = daily;
         _scores = null;
+        _loadFailed = false;
+        var request = ++_request;
         var url = daily
             ? $"{Config["FunctionsApi"]}/getleaderboard?mode=daily&day={_today.Key}"
             : $"{Config["FunctionsApi"]}/getleaderboard";
         try
         {
             var scores = await Http.GetFromJsonAsync<List<HighScore>>(url) ?? new();
-            // Ignore a slow response for the tab the user already switched away from
-            if (_daily == daily)
+            // Ignore a slow response once a newer load (another tab, or a retry) has started
+            if (request == _request)
                 _scores = scores;
         }
-        catch
+        catch (Exception ex)
         {
-            if (_daily == daily)
-                _scores = new();
+            Console.WriteLine($"Leaderboard unavailable: {ex.Message}");
+            if (request == _request)
+                _loadFailed = true;
         }
     }
 }

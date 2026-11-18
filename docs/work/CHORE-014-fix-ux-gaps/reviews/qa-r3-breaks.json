@@ -1,0 +1,5 @@
+{"test":"dotnet test tests/BlazorInvaders.Tests --nologo -v q",
+ "breaks":[
+  {"id":"B1","description":"C1 (r2 survivor): stale failing load sets the failed state (request guard dropped in catch)","file":"src/Pages/Leaderboard.razor","find":"_loadFailed = true;","replace":"{ } _loadFailed = true;"},
+  {"id":"B2","description":"C2: focus after retry runs even when the page was left (dispose guard dropped)","file":"src/Pages/Leaderboard.razor","find":"if (!_disposed)","replace":"if (true)"}
+ ]}

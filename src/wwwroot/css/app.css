@@ -215,8 +215,12 @@ body {
     width: min(870px, 100%);
     aspect-ratio: 87 / 50;
     background: #000;
-    outline: none;
     touch-action: none;
+}
+
+.game-canvas:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
 }
 
 .game-canvas canvas {
@@ -284,6 +288,11 @@ body {
         width: min(870px, calc(100vw - 280px), calc((100vh - 60px) * 87 / 50));
         width: min(870px, calc(100vw - 280px), calc((100dvh - 60px) * 87 / 50));
     }
+
+    /* Touch screens use the on-screen controls, so the playfield shows no focus ring */
+    .game-canvas:focus-visible {
+        outline: none;
+    }
 }
 
 @media (pointer: coarse) and (orientation: portrait) {
@@ -339,5 +348,9 @@ body {
     font-size: xxx-large;
     width: 50px;
     text-align: center;
-    outline: none;
+}
+
+.bm-content .initials:focus {
+    outline: 2px solid #000;
+    outline-offset: 2px;
 }

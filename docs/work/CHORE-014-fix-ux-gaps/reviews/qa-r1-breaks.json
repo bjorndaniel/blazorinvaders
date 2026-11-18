@@ -1,0 +1,6 @@
+{"test":"dotnet test tests/BlazorInvaders.Tests --nologo -v q --filter FullyQualifiedName~SceneBuilderTests",
+ "breaks":[
+  {"id":"B1","description":"AC5 touch: keyboard hint also drawn","file":"src/core/Rendering/SceneBuilder.cs","find":"CenteredText(TouchControls ? \"Tap II to resume\" : \"Press P to resume\", w, h / 2 + 40, 20, White);","replace":"CenteredText(TouchControls ? \"Tap II to resume\" : \"Press P to resume\", w, h / 2 + 40, 20, White); if (TouchControls) CenteredText(\"Press P to resume\", w, h / 2 + 60, 20, White);"},
+  {"id":"B2","description":"AC5 keyboard: touch hint also drawn","file":"src/core/Rendering/SceneBuilder.cs","find":"CenteredText(TouchControls ? \"Tap II to resume\" : \"Press P to resume\", w, h / 2 + 40, 20, White);","replace":"CenteredText(TouchControls ? \"Tap II to resume\" : \"Press P to resume\", w, h / 2 + 40, 20, White); if (!TouchControls) CenteredText(\"Tap II to resume\", w, h / 2 + 60, 20, White);"},
+  {"id":"B3","description":"AC5 touch copy: resume to pause","file":"src/core/Rendering/SceneBuilder.cs","find":"\"Tap II to resume\" : \"Press P to resume\"","replace":"\"Tap II to pause\" : \"Press P to resume\""}
+ ]}
