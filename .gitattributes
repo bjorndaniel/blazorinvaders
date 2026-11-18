@@ -1,2 +1,5 @@
 # DevAgents: parallel branches each add a tracker row
 docs/work/TRACKER.md merge=union
+
+# Shell scripts run in Git Bash and on Linux runners
+*.sh text eol=lf

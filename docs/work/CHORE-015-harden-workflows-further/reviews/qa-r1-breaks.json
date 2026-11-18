@@ -1,0 +1,13 @@
+{ "test": "bash .github/scripts/validate-dispatch-inputs.test.sh",
+  "breaks": [
+   {"id":"B1","description":"AC4 resource group may start with -","file":".github/scripts/validate-dispatch-inputs.sh","find":"[RESOURCE_GROUP]='^[A-Za-z0-9_]","replace":"[RESOURCE_GROUP]='^[A-Za-z0-9_-]"},
+   {"id":"B2","description":"AC4 function app name may end with -","file":".github/scripts/validate-dispatch-inputs.sh","find":"[FUNCTION_APP_NAME]='^[A-Za-z0-9][A-Za-z0-9-]{0,58}[A-Za-z0-9]$'","replace":"[FUNCTION_APP_NAME]='^[A-Za-z0-9][A-Za-z0-9-]{0,58}[A-Za-z0-9-]$'"},
+   {"id":"B3","description":"AC4 location may contain a space","file":".github/scripts/validate-dispatch-inputs.sh","find":"'^[a-z][a-z0-9]{1,39}$'","replace":"'^[a-z][a-z0-9 ]{1,39}$'"},
+   {"id":"B4","description":"AC4 domain label separator matches any character","file":".github/scripts/validate-dispatch-inputs.sh","find":"[A-Za-z0-9])?\\.)+","replace":"[A-Za-z0-9])?.)+"},
+   {"id":"B5","description":"AC4 domain pattern not anchored at start","file":".github/scripts/validate-dispatch-inputs.sh","find":"[CUSTOM_DOMAIN]='^(","replace":"[CUSTOM_DOMAIN]='("},
+   {"id":"B6","description":"AC4 domain label up to 64 chars","file":".github/scripts/validate-dispatch-inputs.sh","find":"{0,61}","replace":"{0,62}"},
+   {"id":"B7","description":"AC4 trailing ? never makes input optional","file":".github/scripts/validate-dispatch-inputs.sh","find":"&& optional=1","replace":"&& optional=0"},
+   {"id":"B8","description":"AC4 error line echoes the value","file":".github/scripts/validate-dispatch-inputs.sh","find":"must be ${RULE[$name]}\"","replace":"must be ${RULE[$name]}: $value\""},
+   {"id":"B9","description":"AC4 exit on first invalid input (not all checked)","file":".github/scripts/validate-dispatch-inputs.sh","find":"  failed=1","replace":"  exit 1"},
+   {"id":"B10","description":"AC4 resource group up to 91 chars","file":".github/scripts/validate-dispatch-inputs.sh","find":"{0,88}","replace":"{0,89}"}
+  ]}

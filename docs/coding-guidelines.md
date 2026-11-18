@@ -8,9 +8,10 @@
 | C# | Compiler, with nullable reference types (as warnings) and implicit usings | `<Nullable>enable</Nullable>` in all four `.csproj`; SDK in `global.json` | `dotnet build src/BlazorInvaders.csproj --nologo` and `dotnet build src/api/BlazorInvaders.Api.csproj --nologo` |
 | C# | xUnit tests | `tests/BlazorInvaders.Tests` | `dotnet test tests/BlazorInvaders.Tests --nologo` |
 | C# | `dotnet format` (whitespace, charset; IDE style and naming at severity `suggestion`) | `.editorconfig` (root, covers `src/` and `tests/`) | `dotnet format src/BlazorInvaders.sln --verify-no-changes` |
+| GitHub workflows | zizmor 1.32.0 (security lint; pinned so new audits do not break CI unannounced) | `.github/workflows/lint-workflows.yml` | `zizmor .` |
 | JS, Razor markup | none | - | - |
 
-CI (`.github/workflows/deploy.yml`) fails on formatting drift, build errors and failing tests.
+CI (`.github/workflows/deploy.yml`) fails on formatting drift, build errors and failing tests. `lint-workflows.yml` fails on zizmor findings and on failing input-validation tests (`.github/scripts/validate-dispatch-inputs.test.sh`).
 
 | ID | Rule | Level | Source |
 |----|------|-------|--------|
@@ -92,5 +93,6 @@ CI (`.github/workflows/deploy.yml`) fails on formatting drift, build errors and 
 
 ## Revisions
 - 2026-11-17 CHORE-004: first version, from the proposal and the user's decisions D1-D8.
+- 2026-11-17 CHORE-015: Tools row and CI sentence updated for zizmor.
 - 2026-11-17 CHORE-009: Tools row, CI sentence, CG1, CG72 and CG73 updated for the root `.editorconfig` and the CI format check; A6 Open question resolved.
 - 2026-11-17 CHORE-008: CG21 example and evidence moved from the deleted high-score read function to `HighScoreValidator.cs` and `SaveHighScore.cs`. CG16 says two functions; the move to `FunctionResponses.cs` stays deferred.

@@ -1,0 +1,7 @@
+{ "test": "bash .github/scripts/validate-dispatch-inputs.test.sh",
+  "breaks": [
+   {"id":"B2","description":"r1 survivor: function app name may end with -","file":".github/scripts/validate-dispatch-inputs.sh","find":"[FUNCTION_APP_NAME]='^[A-Za-z0-9][A-Za-z0-9-]{0,58}[A-Za-z0-9]$'","replace":"[FUNCTION_APP_NAME]='^[A-Za-z0-9][A-Za-z0-9-]{0,58}[A-Za-z0-9-]$'"},
+   {"id":"B3","description":"r1 survivor: location may contain a space","file":".github/scripts/validate-dispatch-inputs.sh","find":"'^[a-z][a-z0-9]{1,39}$'","replace":"'^[a-z][a-z0-9 ]{1,39}$'"},
+   {"id":"B10","description":"r1 survivor: resource group up to 91 chars","file":".github/scripts/validate-dispatch-inputs.sh","find":"{0,88}","replace":"{0,89}"},
+   {"id":"B11","description":"Q5 harness: each error line printed twice","file":".github/scripts/validate-dispatch-inputs.sh","find":"  failed=1","replace":"  echo \"::error title=Invalid input::$lower must be ${RULE[$name]}\"; failed=1"}
+  ]}

@@ -1,0 +1,8 @@
+{ "test": "bash .github/scripts/validate-dispatch-inputs.test.sh",
+  "breaks": [
+   {"id":"B1","description":"AC4 domain 253 limit","file":".github/scripts/validate-dispatch-inputs.sh","find":"${#value} -le 253","replace":"${#value} -le 254"},
+   {"id":"B2","description":"AC4 leading hyphen allowed in domain","file":".github/scripts/validate-dispatch-inputs.sh","find":"[CUSTOM_DOMAIN]='^([A-Za-z0-9]","replace":"[CUSTOM_DOMAIN]='^([A-Za-z0-9-]"},
+   {"id":"B3","description":"AC4 empty without ? accepted","file":".github/scripts/validate-dispatch-inputs.sh","find":"(( optional )) && continue","replace":"continue"},
+   {"id":"B4","description":"AC4 failure not recorded","file":".github/scripts/validate-dispatch-inputs.sh","find":"failed=1","replace":"failed=0"},
+   {"id":"B5","description":"AC4 unknown name exit code","file":".github/scripts/validate-dispatch-inputs.sh","find":"exit 2","replace":"exit 1"}
+  ]}

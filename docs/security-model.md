@@ -1,6 +1,6 @@
 # Security model: BlazorInvaders
 
-**Last updated:** 2026-11-17, by CHORE-008
+**Last updated:** 2026-11-17, by CHORE-015
 
 This model describes the code as it will be once CHORE-001 (.NET 10), CHORE-006 (template leftovers removed) and CHORE-007 (GitHub workflows hardened) have merged (D4).
 
@@ -43,8 +43,8 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 | TB4 | Function App to Table Storage | entities and the partition filter | an account-key connection string. The filters (partition, and RowKey range bounds) are built with `TableClient.CreateQueryFilter` (parameterized) from constants and a partition that has already been validated. |
 | TB5 | API response to other players' screens | stored names and scores | names were restricted at TB2, Razor encodes the output (`Leaderboard.razor`), and the canvas draws text with `fillText` (`game.js`) |
 | TB6 | `localStorage` to client | `personalBest`, daily best, `pendingScores` queue | the JSON read is wrapped in try/catch, and queued scores pass through TB2 again when they are sent |
-| TB7 | GitHub repository to Azure (CI/CD) | code, workflow files, secrets | secrets are used only in jobs that do not run for pull requests. Further workflow hardening comes from CHORE-007 (see T11). |
-| TB8 | Workflow-dispatch inputs to shell | `resource_group`, `app_name`, `custom_domain`, ... | handled by CHORE-007, which fixes the direct `${{ inputs.* }}` interpolation into `run:` scripts (T12) |
+| TB7 | GitHub repository to Azure (CI/CD) | code, workflow files, secrets | secrets are used only in jobs that do not run for pull requests. Every action is pinned to a full commit SHA, zizmor runs in CI (`lint-workflows.yml`), and checkouts do not persist credentials. Further workflow hardening comes from CHORE-007 (see T11). |
+| TB8 | Workflow-dispatch inputs to shell | `resource_group`, `app_name`, `custom_domain`, ... | handled by CHORE-007, which fixes the direct `${{ inputs.* }}` interpolation into `run:` scripts (T12). Inputs are also validated by allow-list in `.github/scripts/validate-dispatch-inputs.sh` before use (CHORE-015) |
 
 ## Threat model
 | ID | Threat | Boundary | Impact | Mitigation | Status |
@@ -59,9 +59,9 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 | T8 | Oversized or malformed request bodies | TB2 | AS5 | a 1 KiB read limit (returns 413), and `JsonException` is handled (returns 400) | mitigated |
 | T9 | Internal details leaking in error responses | TB2, TB3 | AS3 | fixed generic messages. Exceptions are logged on the server only. | mitigated |
 | T10 | Storage credential compromise: the account key in the Function App settings grants full account access (no managed identity, no Key Vault, no table-scoped SAS) | TB4 | AS3, AS1 | The key is not in the repository, and the git history was checked and is clean. `local.settings.json` is git-ignored, and the provisioning workflow masks the key with `::add-mask::`. Whether the key is ever rotated is unknown (Q4). | partly |
-| T11 | CI/CD and supply-chain compromise: a compromised action tag or a workflow change runs with `AZURE_CREDENTIALS`, `GH_PAT` or the SWA token | TB7 | AS4, AS6 | Secrets are not exposed to `pull_request` runs, and no workflow uses `pull_request_target`. CHORE-007 hardens the workflows. The scopes of the service principal and the PAT are unknown (Q3). | partly |
+| T11 | CI/CD and supply-chain compromise: a compromised action tag or a workflow change runs with `AZURE_CREDENTIALS`, `GH_PAT` or the SWA token | TB7 | AS4, AS6 | Secrets are not exposed to `pull_request` runs, and no workflow uses `pull_request_target`. CHORE-007 hardens the workflows. CHORE-015 pins every action to a commit SHA, lints the workflows with zizmor (hash-verified PyPI wheel, from the lock file of the SHA-pinned action), and stops persisting checkout credentials. The SWA deploy action pulls the mutable `staticappsclient:stable` image, so its SHA pin does not freeze the deploy code. Long-lived `AZURE_CREDENTIALS` remain (D1). The scopes of the service principal and the PAT are unknown (Q3). | partly |
 | T12 | Script injection through workflow-dispatch inputs that are put into `run:` steps | TB8 | AS4 | Fixed by CHORE-007 (D4). Only users with write access can dispatch the workflows, and they can already edit them (R6). | mitigated |
-| T13 | Out-of-support runtime and dependency drift | TB2, TB7 | the API's exposure to unpatched vulnerabilities | CHORE-001 moves the API to `net10.0` and provisions new Function Apps with `--runtime-version 10` (D4). Still open: no Dependabot, no NuGet lock files. The provisioning change affects only newly created apps, so the deployed app's runtime setting must be updated separately (Q7). | partly |
+| T13 | Out-of-support runtime and dependency drift | TB2, TB7 | the API's exposure to unpatched vulnerabilities | CHORE-001 moves the API to `net10.0` and provisions new Function Apps with `--runtime-version 10` (D4). Dependabot now covers GitHub Actions (CHORE-015). Still open: no Dependabot for NuGet, no NuGet lock files. The provisioning change affects only newly created apps, so the deployed app's runtime setting must be updated separately (Q7). | partly |
 | T14 | Client-side tampering with `localStorage` (personal best, queued scores) | TB6 | only the player's own client | Parse errors are handled. Queued scores are validated again at TB2, so tampering gains nothing beyond what T1 already allows. | mitigated |
 | T15 | Platform hardening gaps: the site sends no CSP, `X-Content-Type-Options` or `frame-ancestors` headers. The provisioning workflow does not enforce HTTPS-only on the Function App. The storage account keeps its default public network access and shared-key access. | TB1, TB2, TB4 | low: the client holds no secrets or sessions | none | open |
 | T16 | A tampered or stale bundle served from the offline cache | TB1 | AS6 | assets fetched from the same origin with SRI `integrity` hashes, old caches deleted on activate, `no-cache` on the service-worker files | mitigated |
@@ -83,5 +83,6 @@ BlazorInvaders is a Blazor WebAssembly (.NET 10) game and installable PWA, hoste
 ## Revisions
 - 2026-11-17 CHORE-002: first draft, from the code and the user's answers (D1).
 - 2026-11-17 CHORE-002: revised with D2-D4. T1-T4 stay open, to be fixed in follow-up items. Q1, Q3 and Q4 stay open. Q2 is answered. Q5 is closed: CHORE-006 removes the root `SaveHighScore.cs`. Q6 is closed: CHORE-001 moves the API to .NET 10, and T13 becomes partly mitigated. T12 is mitigated by CHORE-007, and TB7, TB8 and T11 were updated to match. Q7 is added.
+- 2026-11-17 CHORE-015: actions SHA-pinned, zizmor in CI, Dependabot for GitHub Actions, dispatch inputs validated by allow-list. TB7, TB8, T11 and T13 updated; T11 stays partly.
 - 2026-11-17 CHORE-008: removed the high-score read endpoint and the unused toast package. AC2, R1, TB3 and T13 updated.
 - 2026-11-17 CHORE-012: capped the leaderboard read with a ranked RowKey. T3 is mitigated; R2, TB4 and T7 reworded. T2 and T4 stay open.
