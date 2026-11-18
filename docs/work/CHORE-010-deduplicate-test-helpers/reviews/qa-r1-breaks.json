@@ -1,0 +1,16 @@
+{ "test": "dotnet test tests/BlazorInvaders.Tests --nologo -v q",
+  "breaks": [
+    { "id": "B1", "description": "Run ignores hz (always 60 Hz frames)", "file": "tests/BlazorInvaders.Tests/TestPlay.cs",
+      "find": "var frameMs = 1000.0 / hz;", "replace": "var frameMs = 1000.0 / 60;",
+      "test": "dotnet test tests/BlazorInvaders.Tests --nologo -v q --filter FullyQualifiedName~GameEngineTests" },
+    { "id": "B2", "description": "Run returns fromMs instead of the last timestamp (chained calls)", "file": "tests/BlazorInvaders.Tests/TestPlay.cs",
+      "find": "engine.Update(t);", "replace": "engine.Update(t); if (i == frames) t = fromMs;" },
+    { "id": "B3", "description": "Shared Height 500 to 450", "file": "tests/BlazorInvaders.Tests/TestPlay.cs",
+      "find": "Height = 500;", "replace": "Height = 450;" },
+    { "id": "B4", "description": "TakeEvents no longer clears (SceneBuilder tests now on shared Run)", "file": "src/core/GameEngine.cs",
+      "find": "var events = _events.ToArray();\n            _events.Clear();", "replace": "var events = _events.ToArray();",
+      "test": "dotnet test tests/BlazorInvaders.Tests --nologo -v q --filter FullyQualifiedName~SceneBuilderTests" },
+    { "id": "B5", "description": "First boss attack 150 ms early (BossWave timing on shared Run)", "file": "src/core/GameEngine.cs",
+      "find": "_bossNextAttack = now + 2000;", "replace": "_bossNextAttack = now + 1850;",
+      "test": "dotnet test tests/BlazorInvaders.Tests --nologo -v q --filter FullyQualifiedName~BossWaveTests" }
+  ] }

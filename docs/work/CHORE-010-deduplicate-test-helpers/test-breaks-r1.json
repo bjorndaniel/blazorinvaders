@@ -1,0 +1,4 @@
+{"test":"dotnet test tests/BlazorInvaders.Tests --nologo -v q","breaks":[
+{"id":"B1","description":"Run: frames rounding to floor","file":"tests/BlazorInvaders.Tests/TestPlay.cs","find":"Math.Round(durationMs / frameMs)","replace":"Math.Round(durationMs / frameMs) - 1"},
+{"id":"B2","description":"NewEngine seed change","file":"tests/BlazorInvaders.Tests/TestPlay.cs","find":"new Random(42)","replace":"new Random(7)"},
+{"id":"B3","description":"Width change","file":"tests/BlazorInvaders.Tests/TestPlay.cs","find":"Width = 870","replace":"Width = 800"}]}

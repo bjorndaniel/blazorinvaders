@@ -3,18 +3,18 @@
 <div class="simple-form text-center">
     <div class="row">
         <div class="col">
-            <label>Enter your initials</label>
+            <label id="initials-label">Enter your initials</label>
         </div>
     </div>
-    <div class="row">
+    <div class="row" role="group" aria-labelledby="initials-label">
         <div class="col">
-            <input class="initials" type="text" maxlength="1" @bind="First" />
+            <input class="initials" type="text" maxlength="1" aria-label="Initial 1 of 3" @bind="First" />
         </div>
         <div class="col">
-            <input class="initials" type="text" maxlength="1" @bind="Second" />
+            <input class="initials" type="text" maxlength="1" aria-label="Initial 2 of 3" @bind="Second" />
         </div>
         <div class="col">
-            <input class="initials" type="text" maxlength="1" @bind="Third" />
+            <input class="initials" type="text" maxlength="1" aria-label="Initial 3 of 3" @bind="Third" />
         </div>
     </div>
     @if (_error != null)

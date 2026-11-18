@@ -1,0 +1,19 @@
+{
+ "test": "dotnet test tests/BlazorInvaders.Tests --nologo",
+ "breaks": [
+  {
+   "id": "B1",
+   "description": "r1 survivor, AC2 game-over daily hint off-centre",
+   "file": "src/core/Rendering/SceneBuilder.cs",
+   "find": "CenteredText(\"D for today's challenge\", w, h / 2 + 55, 18, DailyColor);",
+   "replace": "Text(\"D for today's challenge\", w / 2 + 30, h / 2 + 55, 18, DailyColor, centered: true);"
+  },
+  {
+   "id": "B2",
+   "description": "r1 survivor, AC2 daily leaderboard title off-centre (disputed as unreachable)",
+   "file": "src/core/Rendering/SceneBuilder.cs",
+   "find": "CenteredText(engine.IsDaily ? \"TODAY'S CHALLENGE\" : \"TOP SCORES\", w, 130, 26, Gold);",
+   "replace": "Text(engine.IsDaily ? \"TODAY'S CHALLENGE\" : \"TOP SCORES\", engine.IsDaily ? w / 2 + 30 : w / 2, 130, 26, Gold, centered: true);"
+  }
+ ]
+}

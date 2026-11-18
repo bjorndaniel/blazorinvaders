@@ -1,0 +1,42 @@
+{
+ "test": "dotnet test tests/BlazorInvaders.Tests --nologo --filter FullyQualifiedName~SceneBuilderTests",
+ "breaks": [
+  {
+   "id": "B1",
+   "description": "AC2 game-over daily hint off-centre",
+   "file": "src/core/Rendering/SceneBuilder.cs",
+   "find": "CenteredText(\"D for today's challenge\", w, h / 2 + 55, 18, DailyColor);",
+   "replace": "Text(\"D for today's challenge\", w / 2 + 30, h / 2 + 55, 18, DailyColor, centered: true);",
+   "test": "dotnet test tests/BlazorInvaders.Tests --nologo"
+  },
+  {
+   "id": "B2",
+   "description": "AC2 daily leaderboard title off-centre",
+   "file": "src/core/Rendering/SceneBuilder.cs",
+   "find": "CenteredText(engine.IsDaily ? \"TODAY'S CHALLENGE\" : \"TOP SCORES\", w, 130, 26, Gold);",
+   "replace": "Text(engine.IsDaily ? \"TODAY'S CHALLENGE\" : \"TOP SCORES\", engine.IsDaily ? w / 2 + 30 : w / 2, 130, 26, Gold, centered: true);",
+   "test": "dotnet test tests/BlazorInvaders.Tests --nologo"
+  },
+  {
+   "id": "B3",
+   "description": "AC4 touch start line font 26 to 28",
+   "file": "src/core/Rendering/SceneBuilder.cs",
+   "find": "CenteredText(\"Use the arrow buttons to move, FIRE to shoot\", w, 160, 26, White);",
+   "replace": "CenteredText(\"Use the arrow buttons to move, FIRE to shoot\", w, 160, 28, White);"
+  },
+  {
+   "id": "B4",
+   "description": "AC2 daily HUD tag x off by 1 design px",
+   "file": "src/core/Rendering/SceneBuilder.cs",
+   "find": "CenteredText($\"DAILY  ·  {Describe(daily.Modifier)}\", w, h - 10, 14, DailyColor);",
+   "replace": "CenteredText($\"DAILY  ·  {Describe(daily.Modifier)}\", w + 2, h - 10, 14, DailyColor);"
+  },
+  {
+   "id": "B5",
+   "description": "AC2 leaderboard rows drift right per row",
+   "file": "src/core/Rendering/SceneBuilder.cs",
+   "find": "CenteredText($\"{i + 1}.  {top[i].Name,-5} {top[i].Score:D5}\", w, 180 + i * 45, 22, White);",
+   "replace": "CenteredText($\"{i + 1}.  {top[i].Name,-5} {top[i].Score:D5}\", w + i * 6, 180 + i * 45, 22, White);"
+  }
+ ]
+}

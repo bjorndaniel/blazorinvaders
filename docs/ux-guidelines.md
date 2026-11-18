@@ -1,6 +1,6 @@
 # UX guidelines: Blazor Invaders
 
-**Last updated:** 2026-11-17, by CHORE-008
+**Last updated:** 2026-11-17, by CHORE-014
 
 ## Product and users
 A Space Invaders game in the browser, installable as a PWA that also plays offline. Players use a desktop with a keyboard or a phone with touch (D1). Their top tasks are playing a game (standard or today's challenge), entering initials after a qualifying score, and viewing the leaderboards (all-time and today's challenge). There are no accounts. Personal bests are kept on the device.
@@ -39,7 +39,7 @@ A Space Invaders game in the browser, installable as a PWA that also plays offli
 | UX21 | The primary action is `btn-primary` and the secondary one is `btn-secondary` (white with dark text). Labels are verbs or destinations, such as `Submit`, `Cancel` and `Back to game`. | code, default rules |
 | UX22 | Game states are drawn on the canvas, not in HTML: the cycling attract screens, wave banners, the pause overlay and game over. Every overlay that waits for the player names the key or tap that continues it. | code (`SceneBuilder.cs`) |
 | UX23 | The initials dialog stops game input while it is open and returns focus to the playfield when it closes. Validation errors appear under the inputs and are plain ("Use letters A-Z or digits"). The typed initials stay in the inputs. | code (`SetHighScore.razor`, `Index.razor`) |
-| UX24 | On the leaderboard, peer boards are tabs (`btn-group`, `role="tablist"`, with the selected tab filled `btn-light`). It shows "Loading..." while fetching, "No scores yet. Be the first!" when a board is empty, and a striped dark table of #, Name and Score otherwise. If a board cannot be loaded, the page says so and does not look empty. See Known gaps. | code, default rules, D2 |
+| UX24 | On the leaderboard, peer boards are tabs (`btn-group`, `role="tablist"`, with the selected tab filled `btn-light`). It shows "Loading..." while fetching, "No scores yet. Be the first!" when a board is empty, and a striped dark table of #, Name and Score otherwise. If a board cannot be loaded, it shows "Could not load the leaderboard. Check your connection and try again." and a `Try again` button (`btn-secondary`) that reloads the selected board; it never shows the empty text. | code, default rules, D2 |
 | UX25 | During play, a network failure is silent. It is logged to the console, the game continues and the score is queued (at most 10). The player never sees a raw error. | code |
 | UX26 | There are two routes: `/` (the game) and `/leaderboard`. Every new screen has a visible way back to the game. | code |
 | UX27 | There are no confirmation dialogs. Starting, pausing and leaving happen at once, and new features keep it that way unless an action loses data. | default rules, code |
@@ -51,13 +51,13 @@ A Space Invaders game in the browser, installable as a PWA that also plays offli
 |----|-----------|--------|
 | UX30 | The target is WCAG 2.2 AA for all HTML UI: pages, dialogs, touch controls and page text. The real-time canvas playfield is exempt where a game cannot comply, but it follows UX31, UX34, UX35 and UX36. | D1 |
 | UX31 | The whole game can be played with the keyboard: the arrow keys move, Space fires and starts, P or Escape pauses, and D starts today's challenge. Keys are handled only when the playfield has focus (`tabindex="0"`), so Tab still moves focus on and browser shortcuts still work. New keys avoid Ctrl, Alt, Meta and Tab combinations. | code (`game.js`) |
-| UX32 | Every focusable HTML element, the playfield included, shows a visible focus indicator (WCAG 2.4.7). See Known gaps. | WCAG 2.2 AA, D2 |
-| UX33 | Every input and every icon-only button has an accessible name. The touch buttons use `aria-label`, such as "Move left" and "Fire". Each initials input has its own name, for example "Initial 1 of 3". See Known gaps. | code, WCAG 4.1.2, D2 |
+| UX32 | Every focusable HTML element, the playfield included, shows a visible focus indicator (WCAG 2.4.7). On touch screens the playfield shows none, because the on-screen controls replace it (CHORE-014 D2). | WCAG 2.2 AA, CHORE-014 D2 |
+| UX33 | Every input and every icon-only button has an accessible name. The touch buttons use `aria-label`, such as "Move left" and "Fire". Each initials input has its own name, for example "Initial 1 of 3". | code, WCAG 4.1.2, D2 |
 | UX34 | Text contrast is at least 4.5:1, or 3:1 for large text. Control boundaries are at least 3:1 against their actual background, including the gradient. | WCAG 1.4.3, 1.4.11 |
 | UX35 | Colour is never the only signal. Power-ups carry a letter and a HUD name, and the daily mode shows a "DAILY" label. A new state gets text or shape as well as colour. | code, default rules |
 | UX36 | Screen shake and other motion that is not part of gameplay are skipped when `prefers-reduced-motion: reduce` is set (`effects.js`). Nothing flashes more than 3 times a second. | code, WCAG 2.3.1 |
 | UX37 | Touch targets are at least 44×44 CSS px. Today the small buttons are 44 px, the move buttons 64 px and Fire 84 px. | code, default rules |
-| UX38 | Pinch zoom is blocked only for the playfield and touch controls during play. The leaderboard and the initials dialog can be zoomed (WCAG 1.4.4). See Known gaps. | D2, WCAG 1.4.4 |
+| UX38 | Pinch zoom is blocked only for the playfield and touch controls during play. The leaderboard and the initials dialog can be zoomed (WCAG 1.4.4). | D2, WCAG 1.4.4 |
 
 ## Content and language
 | ID | Guideline | Source |
@@ -65,7 +65,7 @@ A Space Invaders game in the browser, installable as a PWA that also plays offli
 | UX40 | English only, with no translation mechanism. UI text lives in the Razor markup and in `SceneBuilder.cs`. | D1, code |
 | UX41 | Canvas banners and titles are uppercase (GAME OVER, PAUSED, WAVE 3, DAILY CHALLENGE). Instructions, page headings and buttons are sentence case ("Press space to start", "Today's challenge", "Back to game"). | code |
 | UX42 | Terms stay the same everywhere: score, Hi, leaderboard, today's challenge (daily challenge on the canvas), initials, wave, boss, and the power-up names DOUBLE SHOT, RAPID FIRE, SHIELD, PIERCING and +1 LIFE. | code |
-| UX43 | Instructions name the input the player has: "Tap …" on touch screens and "Press <key> …" with a keyboard (`SceneBuilder.TouchControls`). See Known gaps. | code, D2 |
+| UX43 | Instructions name the input the player has: "Tap …" on touch screens and "Press <key> …" with a keyboard (`SceneBuilder.TouchControls`). | code, D2 |
 | UX44 | Copy is short and arcade-toned. Errors do not blame the player and say what to do. Exception text goes to the console, never the UI. Canvas scores are zero-padded to 5 digits. | code, default rules |
 
 ## Layout and platforms
@@ -77,12 +77,7 @@ A Space Invaders game in the browser, installable as a PWA that also plays offli
 | UX53 | Supported browsers are the current evergreen ones on desktop, plus Safari and Chrome on mobile. Newer CSS gets a fallback first, as `100vh` comes before `100dvh`. | default rules, code |
 
 ## Known gaps
-The code departs from these guidelines in the places below. The user chose to keep the rules and fix all of these in one later fix-up item (D2). Until then, a review raises one only if its item changes the code involved.
-- UX24: when the request fails, for example offline, `Pages/Leaderboard.razor` shows "No scores yet. Be the first!" as if the board were empty.
-- UX32: `app.css` removes the focus outline on `.game-canvas` and on `.bm-content .initials`.
-- UX33: the three initials inputs in `Components/SetHighScore.razor` share one visible label and have no names of their own.
-- UX38: `index.html` turns off pinch zoom for the whole app (`maximum-scale=1.0, user-scalable=no`).
-- UX43: the pause overlay says "Press P to resume" on touch screens too (`SceneBuilder.cs:124`).
+None open. CHORE-014 fixed the five gaps D2 listed.
 
 Not built yet, each in its own later item (D3): the mute control (UX29) and the larger phone text (UX14).
 
@@ -98,4 +93,5 @@ Not built yet, each in its own later item (D3): the mute control (UX29) and the 
   - UX20 states there are no toasts.
   - Named the initials inputs in UX33.
   - Removed the resolved open questions.
+- 2026-11-17 CHORE-014: fixed the five known gaps (UX24, UX32, UX33, UX38, UX43).
 - 2026-11-17 CHORE-008: removed the toast package reference from D4 and UX20; no toast package is used.
