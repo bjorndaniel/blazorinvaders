@@ -30,6 +30,7 @@
     <Compile Include="..\..\src\api\StoredScore.cs" />
     <Compile Include="..\..\src\api\LeaderboardRanking.cs" />
     <Compile Include="..\..\src\api\LegacyTopCache.cs" />
+    <Compile Include="..\..\src\api\ScoreRateLimiter.cs" />
   </ItemGroup>
 
 </Project>

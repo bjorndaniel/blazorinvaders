@@ -6,7 +6,8 @@ namespace BlazorInvaders.Api;
 
 /// <param name="Mode">"daily" for a daily challenge score, otherwise null (all-time board).</param>
 /// <param name="Day">The challenge's UTC date as yyyyMMdd, for daily scores.</param>
-public record HighScoreRequest(string Name, int Score, string? Mode = null, string? Day = null);
+/// <param name="Wave">The wave the game reached; required, and bounds the plausible score.</param>
+public record HighScoreRequest(string Name, int Score, string? Mode = null, string? Day = null, int Wave = 0);
 
 public static partial class HighScoreValidator
 {
@@ -14,6 +15,26 @@ public static partial class HighScoreValidator
     public const int MaxScore = 999_999;
     public const string DailyMode = "daily";
     public const string AllTimePartition = "HighScore";
+
+    // The scoring below must match GameEngine.cs; ScorePlausibilityTests fails if it drifts.
+    // Aliens: the 11x5 grid is worth 990 points at 1x, and the combo multiplier peaks at 4x.
+    internal const int GridPoints = 990;
+    internal const int MaxComboMultiplier = 4;
+    // Mothership: the best score in its table. A wave allows at most 200 hits: a pass crosses in
+    // about 18 ticks, one is on screen at a time, and a hit clears it 2 ticks later, ~175 at most.
+    internal const int MotherShipMaxPoints = 300;
+    internal const int MaxMotherShipsPerWave = 200;
+    internal const int PerfectWaveBonus = 500;
+    // Boss: a hit is worth 50 (combo-multiplied), its HP is 30 + 10 per earlier boss, and the kill bonus is 1000 per boss
+    internal const int BossHitPoints = 50;
+    internal const int BossKillBonus = 1000;
+    internal const int BossBaseHp = 30;
+    internal const int BossHpPerBoss = 10;
+    // A boss every 5 waves, or every 3 with the daily Boss Rush modifier
+    internal const int BossEvery = 5;
+    internal const int BossRushEvery = 3;
+    // The daily Glass modifier doubles every award
+    internal const int DailyScoreFactor = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -67,6 +88,38 @@ public static partial class HighScoreValidator
         date = default;
         return day != null && DayPattern().IsMatch(day) &&
             DateOnly.TryParseExact(day, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+    }
+
+    private const long AlienWaveMax =
+        (long)GridPoints * MaxComboMultiplier + (long)MaxMotherShipsPerWave * MotherShipMaxPoints + PerfectWaveBonus;
+
+    /// <summary>The most a boss wave can score: the boss's hits and kill bonus, plus the perfect-wave bonus. For tests.</summary>
+    internal static long BossWaveMax(int boss) =>
+        (long)BossHitPoints * MaxComboMultiplier * (BossBaseHp + BossHpPerBoss * (boss - 1)) +
+        (long)BossKillBonus * boss + PerfectWaveBonus;
+
+    /// <summary>
+    /// The most a game could score by <paramref name="wave"/>: each wave's best case, doubled for
+    /// daily games (the modifier is not sent, so Glass is assumed). Stops once it passes
+    /// <see cref="MaxScore"/>.
+    /// </summary>
+    internal static long MaxPlausibleScore(int wave, bool daily)
+    {
+        long total = 0;
+        for (var w = 1; w <= wave && total <= MaxScore; w++)
+        {
+            var best = AlienWaveMax;
+            var boss = 0;
+            if (w % BossEvery == 0)
+                boss = w / BossEvery;
+            // Daily games may be Boss Rush, whose bosses come sooner and are tougher
+            if (daily && w % BossRushEvery == 0)
+                boss = Math.Max(boss, w / BossRushEvery);
+            if (boss > 0)
+                best = Math.Max(best, BossWaveMax(boss));
+            total += best * (daily ? DailyScoreFactor : 1);
+        }
+        return total;
     }
 
     /// <summary>
@@ -129,6 +182,12 @@ public static partial class HighScoreValidator
             return false;
         }
 
+        if (dto.Wave < 1)
+        {
+            error = "Wave reached is required";
+            return false;
+        }
+
         string? mode = null, day = null;
         if (!string.IsNullOrEmpty(dto.Mode))
         {
@@ -145,7 +204,13 @@ public static partial class HighScoreValidator
             (mode, day) = (DailyMode, dto.Day);
         }
 
-        score = new HighScoreRequest(name, dto.Score, mode, day);
+        if (dto.Score % 10 != 0 || dto.Score > MaxPlausibleScore(dto.Wave, mode == DailyMode))
+        {
+            error = "Score is not possible for the wave reached";
+            return false;
+        }
+
+        score = new HighScoreRequest(name, dto.Score, mode, day, dto.Wave);
         error = string.Empty;
         return true;
     }

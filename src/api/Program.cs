@@ -9,6 +9,7 @@ var host = new HostBuilder()
     {
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<HighScoreStore>();
+        services.AddSingleton<ScoreRateLimiter>();
     })
     .Build();
 

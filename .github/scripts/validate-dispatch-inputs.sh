@@ -12,14 +12,18 @@ declare -A PATTERN=(
   [FUNCTION_APP_NAME]='^[A-Za-z0-9][A-Za-z0-9-]{0,58}[A-Za-z0-9]$'
   [STORAGE_NAME]='^[a-z0-9]{3,24}$'
   [CUSTOM_DOMAIN]='^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$'
+  [MAX_INSTANCES]='^[1-9][0-9]{0,8}$'
+  [DAILY_QUOTA_GB_SECONDS]='^[1-9][0-9]{0,8}$'
 )
 declare -A RULE=(
-  [RESOURCE_GROUP]='2-90 characters: letters, digits, _ . ( ) -, starting with a letter, digit or _, not ending with . or -'
+  [RESOURCE_GROUP]='2-90 characters: letters, digits, _ . ( ) -, starting with a letter, digit or _, not ending with .'
   [LOCATION]='2-40 lowercase letters and digits, starting with a letter (e.g. westeurope)'
   [APP_NAME]='2-60 characters: letters, digits and -, not starting or ending with -'
   [FUNCTION_APP_NAME]='2-60 characters: letters, digits and -, not starting or ending with -'
   [STORAGE_NAME]='3-24 lowercase letters and digits'
   [CUSTOM_DOMAIN]='a domain name such as example.com (up to 253 characters)'
+  [MAX_INSTANCES]='a whole number from 1 to 999999999'
+  [DAILY_QUOTA_GB_SECONDS]='a whole number from 1 to 999999999'
 )
 
 failed=0

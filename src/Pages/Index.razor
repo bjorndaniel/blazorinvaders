@@ -241,6 +241,7 @@
                 score.Day = daily.Key;
             }
             score.Score = _engine.Points;
+            score.Wave = _engine.Wave;
             if (_engine.Points >= _engine.HighScore)
                 _engine.HighScoreName = score.Name;
             if (!await SendScoreAsync(score))
@@ -265,7 +266,13 @@
         try
         {
             var response = await Http.PostAsJsonAsync($"{Config["FunctionsApi"]}/savehighscore", score);
-            // A rejected score would be rejected again, so only network failures are retried
+            // A rejected score would be rejected again, so only network failures and
+            // temporary refusals (rate limit, unavailable, quota stop) are retried
+            if (HighScore.ShouldRetrySend(response.StatusCode))
+            {
+                Console.WriteLine($"High score not sent, will retry later: {(int)response.StatusCode}");
+                return false;
+            }
             if (!response.IsSuccessStatusCode)
                 Console.Error.WriteLine($"Saving high score failed: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
             return true;

@@ -1,0 +1,11 @@
+{ "test": "dotnet test tests/BlazorInvaders.Tests --nologo",
+  "breaks": [
+  {"id":"Q-B1","description":"AC2/T2 IPv6 mask /64 to /96 (r1 survivor, Q1)","file":"src/api/ScoreRateLimiter.cs","find":"Array.Clear(bytes, 8, 8);","replace":"Array.Clear(bytes, 12, 4);"},
+  {"id":"Q-B2","description":"TB2 CPU: early exit of MaxPlausibleScore removed (r1 survivor, Q2)","file":"src/api/HighScoreValidator.cs","find":"w <= wave && total <= MaxScore;","replace":"w <= wave;"},
+  {"id":"Q-B3","description":"AC2 expiry timer does nothing (r1 survivor, Q3)","file":"src/api/ScoreRateLimiter.cs","find":"time.CreateTimer(_ => Prune(time.GetUtcNow()), null, Window, Window);","replace":"time.CreateTimer(_ => { }, null, Window, Window);"},
+  {"id":"Q-B5","description":"P6 inline-prune throttle off (r1 survivor, Q4)","file":"src/api/ScoreRateLimiter.cs","find":"        _lastPrune = now;","replace":"        _lastPrune = DateTimeOffset.MinValue;"},
+  {"id":"Q-B6","description":"AC3 bound sums one wave too many (r1 survivor, Q5)","file":"src/api/HighScoreValidator.cs","find":"w <= wave && total","replace":"w <= wave + 1 && total"},
+  {"id":"Q-B8","description":"AC3 mothership allowance 200 to 150 (r1 survivor, Q5)","file":"src/api/HighScoreValidator.cs","find":"MaxMotherShipsPerWave = 200;","replace":"MaxMotherShipsPerWave = 150;"},
+  {"id":"Q-B10","description":"Q7 unknown-address posts reported as the client bucket","file":"src/api/ScoreRateLimiter.cs","find":"bucket = key == UnknownKey ? RateBucket.Unknown : RateBucket.Client;","replace":"bucket = RateBucket.Client;"},
+  {"id":"Q-B11","description":"Q3 timer period not the window (fires once only)","file":"src/api/ScoreRateLimiter.cs","find":"null, Window, Window);","replace":"null, Window, Timeout.InfiniteTimeSpan);"}
+]}

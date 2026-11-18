@@ -96,6 +96,22 @@ dotnet format src/BlazorInvaders.sln --verify-no-changes
 dotnet format src/BlazorInvaders.sln
 ```
 
+## Abuse and cost limits
+
+The API allows 20 score posts per client per hour (counted in memory per instance, on a salted hash of the client IP that is never stored). Past that it answers 429 and the game queues the score. Scores also have to be possible for the wave reached.
+
+Provisioning caps the Function App at 1 instance and sets a daily quota of 10,000 GB-seconds (inputs `max_instances` and `daily_quota_gb_seconds`). Provisioning is not re-run for an app that exists, so set them by hand:
+
+```bash
+az resource update --resource-group <rg> --name <function-app>/config/web \
+  --resource-type Microsoft.Web/sites/config --set properties.functionAppScaleLimit=1
+az functionapp update --name <function-app> --resource-group <rg> --set dailyMemoryTimeQuota=10000
+```
+
+When the quota is hit the API stops until 00:00 UTC; scores then fail as a network error or a 403 and are queued and sent later. A value of 0 removes a limit.
+
+After deploying, check that the client IP header cannot be forged: send 21 POSTs to `/api/savehighscore` with an invalid body (each is a 400, so nothing is saved), each with a different forged `X-Client-IP` and `X-Forwarded-For`. The 21st must get 429. If it gets 400, the header is forgeable and the build must be rolled back.
+
 ## Tech stack
 
 | Layer | Technology |

@@ -14,7 +14,7 @@ check() {
   while [[ $1 != -- ]]; do envs+=("$1"); shift; done
   shift
   local out code=0
-  out="$(env -u RESOURCE_GROUP -u LOCATION -u APP_NAME -u STORAGE_NAME -u FUNCTION_APP_NAME -u CUSTOM_DOMAIN "${envs[@]}" bash "$script" "$@" 2>&1)" || code=$?
+  out="$(env -u RESOURCE_GROUP -u LOCATION -u APP_NAME -u STORAGE_NAME -u FUNCTION_APP_NAME -u CUSTOM_DOMAIN -u MAX_INSTANCES -u DAILY_QUOTA_GB_SECONDS "${envs[@]}" bash "$script" "$@" 2>&1)" || code=$?
   local ok=1
   [[ $code -eq $want ]] || ok=0
   if [[ $want -eq 1 ]]; then
@@ -75,6 +75,16 @@ check "rg 91 chars" 1 resource_group "$rg91" RESOURCE_GROUP="$rg91" -- RESOURCE_
 check "location with space" 1 location "West Europe" "LOCATION=West Europe" -- LOCATION
 check "unset variable" 1 location "" -- LOCATION
 check "two invalid inputs" 1 "location app_name" "" LOCATION=-x APP_NAME=-y -- LOCATION APP_NAME
+check "rg trailing dash" 0 "" "" RESOURCE_GROUP=rg- -- RESOURCE_GROUP
+for n in MAX_INSTANCES DAILY_QUOTA_GB_SECONDS; do
+  lname="$(printf '%s' "$n" | tr 'A-Z' 'a-z')"
+  for v in 1 10000 999999999; do
+    check "$n accepts $v" 0 "" "" "$n=$v" -- "$n"
+  done
+  for v in 0 01 -1 1.5 ' 1' 1e4 '' 1000000000; do
+    check "$n rejects '$v'" 1 "$lname" "" "$n=$v" -- "$n"
+  done
+done
 check "unknown variable" 2 "" "" FOO=bar -- FOO
 
 echo "$pass passed, $fail failed"

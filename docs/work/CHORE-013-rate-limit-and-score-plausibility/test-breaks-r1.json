@@ -1,0 +1,12 @@
+{ "test": "dotnet test tests/BlazorInvaders.Tests --nologo",
+  "breaks": [
+  {"id":"B1","description":"AC1 limit boundary >= to >","file":"src/api/ScoreRateLimiter.cs","find":"counter.Count >= MaxPostsPerWindow","replace":"counter.Count > MaxPostsPerWindow"},
+  {"id":"B2","description":"AC1 window end boundary","file":"src/api/ScoreRateLimiter.cs","find":"now >= counter.Start + Window)\n                counter = null;","replace":"now > counter.Start + Window)\n                counter = null;"},
+  {"id":"B3","description":"AC1 overflow bucket dropped (limit off when full)","file":"src/api/ScoreRateLimiter.cs","find":"key = OverflowKey;","replace":"key = Guid.NewGuid().ToString();"},
+  {"id":"B4","description":"AC3 wave required","file":"src/api/HighScoreValidator.cs","find":"dto.Wave < 1","replace":"dto.Wave < 0"},
+  {"id":"B5","description":"AC3 multiple of 10","file":"src/api/HighScoreValidator.cs","find":"dto.Score % 10 != 0 ||","replace":"false ||"},
+  {"id":"B6","description":"AC3 bound boundary","file":"src/api/HighScoreValidator.cs","find":"dto.Score > MaxPlausibleScore(","replace":"dto.Score >= MaxPlausibleScore("},
+  {"id":"B7","description":"AC3 daily factor ignored","file":"src/api/HighScoreValidator.cs","find":"total += best * (daily ? DailyScoreFactor : 1);","replace":"total += best;"},
+  {"id":"B8","description":"AC1 retry set drops 429","file":"src/core/GameObjects/HighScore.cs","find":"status is HttpStatusCode.TooManyRequests or ","replace":"status is "},
+  {"id":"B9","description":"AC1 retry set drops 403","file":"src/core/GameObjects/HighScore.cs","find":" or HttpStatusCode.Forbidden","replace":""}
+]}

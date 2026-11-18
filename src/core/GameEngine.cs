@@ -17,8 +17,10 @@ namespace BlazorInvaders.GameObjects
 
         public const int MaxLives = 5;
         private const int DefaultBossEvery = 5;
-        private const int BossHitPoints = 50;
-        private const int BossKillBonus = 1000;
+        /// <summary>Points per boss hit before the combo multiplier. For tests.</summary>
+        internal const int BossHitPoints = 50;
+        /// <summary>Kill bonus per boss defeated so far. For tests.</summary>
+        internal const int BossKillBonus = 1000;
         private const int PowerUpDropPercent = 5;
         private const float RapidFireIntervalMs = 120;
 
@@ -33,7 +35,8 @@ namespace BlazorInvaders.GameObjects
         };
 
         // Deterministic mothership score table (authentic to original)
-        private static readonly int[] MotherShipScoreTable =
+        /// <summary>For tests.</summary>
+        internal static readonly int[] MotherShipScoreTable =
             { 100, 50, 50, 100, 150, 100, 100, 50, 300, 100, 100, 100, 50, 150, 100 };
 
         private readonly int _width;
@@ -436,7 +439,8 @@ namespace BlazorInvaders.GameObjects
         private int GetMotherShipScore() =>
             MotherShipScoreTable[_totalShotsFired % MotherShipScoreTable.Length];
 
-        private static int GetAlienPoints(int row) => row switch
+        /// <summary>Points for an alien in <paramref name="row"/>, before the combo multiplier. For tests.</summary>
+        internal static int GetAlienPoints(int row) => row switch
         {
             0 => 30,
             1 or 2 => 20,

@@ -27,6 +27,14 @@ on:
         description: "Custom domain, e.g. yourdomain.com (leave blank to skip)"
         required: false
         default: ""
+      max_instances:
+        description: "Maximum Function App instances (caps scale-out and cost)"
+        required: true
+        default: "1"
+      daily_quota_gb_seconds:
+        description: "Daily Function App usage quota in GB-seconds (the app stops for the day when it is hit)"
+        required: true
+        default: "10000"
 
 permissions:
   contents: read
@@ -41,13 +49,15 @@ jobs:
       STORAGE_NAME: ${{ inputs.storage_name }}
       FUNCTION_APP_NAME: ${{ inputs.function_app_name }}
       CUSTOM_DOMAIN: ${{ inputs.custom_domain }}
+      MAX_INSTANCES: ${{ inputs.max_instances }}
+      DAILY_QUOTA_GB_SECONDS: ${{ inputs.daily_quota_gb_seconds }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
 
       - name: Validate inputs
-        run: bash .github/scripts/validate-dispatch-inputs.sh RESOURCE_GROUP LOCATION APP_NAME STORAGE_NAME FUNCTION_APP_NAME 'CUSTOM_DOMAIN?'
+        run: bash .github/scripts/validate-dispatch-inputs.sh RESOURCE_GROUP LOCATION APP_NAME STORAGE_NAME FUNCTION_APP_NAME 'CUSTOM_DOMAIN?' MAX_INSTANCES DAILY_QUOTA_GB_SECONDS
 
       - name: Azure login
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.3.1
@@ -109,6 +119,18 @@ jobs:
             --settings \
               "AzureWebJobsStorage=$STORAGE_CONN_STR" \
               "FUNCTIONS_WORKER_RUNTIME=dotnet-isolated"
+
+      - name: Set scale limit and daily quota
+        run: |
+          az resource update \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$FUNCTION_APP_NAME/config/web" \
+            --resource-type "Microsoft.Web/sites/config" \
+            --set properties.functionAppScaleLimit="$MAX_INSTANCES"
+          az functionapp update \
+            --name "$FUNCTION_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --set dailyMemoryTimeQuota="$DAILY_QUOTA_GB_SECONDS"
 
       - name: Get SWA deployment token and hostname
         id: swa
@@ -192,6 +214,8 @@ jobs:
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
           echo "| **App URL** | https://$HOSTNAME |" >> $GITHUB_STEP_SUMMARY
           echo "| **API URL** | $API_URL |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Max instances** | $MAX_INSTANCES |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Daily quota (GB-s)** | $DAILY_QUOTA_GB_SECONDS |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "GitHub secrets have been set automatically." >> $GITHUB_STEP_SUMMARY
           if [ -n "$CUSTOM_DOMAIN" ]; then

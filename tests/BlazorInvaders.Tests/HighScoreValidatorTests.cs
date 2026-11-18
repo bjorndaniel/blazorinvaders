@@ -15,7 +15,7 @@ public class HighScoreValidatorTests
     [InlineData("7", "7")]
     public void ValidName_IsNormalized(string name, string expected)
     {
-        Assert.True(Parse($$"""{"name":"{{name}}","score":100}""", out var score, out _));
+        Assert.True(Parse($$"""{"name":"{{name}}","score":100,"wave":1}""", out var score, out _));
         Assert.Equal(expected, score.Name);
         Assert.Equal(100, score.Score);
     }
@@ -28,13 +28,13 @@ public class HighScoreValidatorTests
     [InlineData("ÅÄÖ")]
     public void InvalidName_IsRejected(string name)
     {
-        Assert.False(Parse($$"""{"name":"{{name}}","score":100}""", out _, out var error));
+        Assert.False(Parse($$"""{"name":"{{name}}","score":100,"wave":1}""", out _, out var error));
         Assert.NotEmpty(error);
     }
 
     [Fact]
     public void MissingName_IsRejected() =>
-        Assert.False(Parse("""{"score":100}""", out _, out _));
+        Assert.False(Parse("""{"score":100,"wave":1}""", out _, out _));
 
     [Theory]
     [InlineData(0)]
@@ -42,16 +42,70 @@ public class HighScoreValidatorTests
     [InlineData(HighScoreValidator.MaxScore + 1)]
     [InlineData(int.MaxValue)]
     public void OutOfRangeScore_IsRejected(int value) =>
-        Assert.False(Parse($$"""{"name":"ABC","score":{{value}}}""", out _, out _));
+        Assert.False(Parse($$"""{"name":"ABC","score":{{value}},"wave":1}""", out _, out _));
 
     [Fact]
     public void MaxScore_IsAccepted() =>
-        Assert.True(Parse($$"""{"name":"ABC","score":{{HighScoreValidator.MaxScore}}}""", out _, out _));
+        Assert.True(Parse("""{"name":"ABC","score":999990,"wave":30}""", out _, out _));
+
+    [Theory]
+    [InlineData("""{"name":"ABC","score":100}""")]
+    [InlineData("""{"name":"ABC","score":100,"wave":0}""")]
+    [InlineData("""{"name":"ABC","score":100,"wave":-1}""")]
+    public void MissingOrInvalidWave_IsRejected(string json)
+    {
+        Assert.False(Parse(json, out _, out var error));
+        Assert.Contains("Wave", error);
+    }
+
+    [Fact]
+    public void ScoreNotMultipleOf10_IsRejected()
+    {
+        Assert.False(Parse("""{"name":"ABC","score":105,"wave":1}""", out _, out _));
+        Assert.True(Parse("""{"name":"ABC","score":110,"wave":1}""", out _, out _));
+    }
+
+    [Fact]
+    public void AllTimeScore_IsBoundedByWave()
+    {
+        var max = HighScoreValidator.MaxPlausibleScore(1, daily: false);
+        Assert.True(Parse($$"""{"name":"ABC","score":{{max}},"wave":1}""", out _, out _));
+        Assert.False(Parse($$"""{"name":"ABC","score":{{max + 10}},"wave":1}""", out _, out _));
+    }
+
+    [Fact]
+    public void MaxPlausibleScore_PinnedValues()
+    {
+        Assert.Equal(64_460, HighScoreValidator.MaxPlausibleScore(1, false));
+        Assert.Equal(128_920, HighScoreValidator.MaxPlausibleScore(2, false));
+        Assert.Equal(128_920, HighScoreValidator.MaxPlausibleScore(1, true));
+        Assert.True(Parse("""{"name":"ABC","score":64460,"wave":1}""", out _, out _));
+        Assert.False(Parse("""{"name":"ABC","score":64470,"wave":1}""", out _, out _));
+    }
+
+    [Fact]
+    public async Task HugeWave_ReturnsQuickly()
+    {
+        // Without the early exit the loop never ends (the wave counter wraps), so bound the wait
+        var max = await Task.Run(() => HighScoreValidator.MaxPlausibleScore(int.MaxValue, false))
+            .WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(max > HighScoreValidator.MaxScore);
+        Assert.True(Parse("""{"name":"ABC","score":999990,"wave":2147483647}""", out _, out _));
+    }
+
+    [Fact]
+    public void DailyScore_AllowsDoubleTheAllTimeBound()
+    {
+        var doubled = HighScoreValidator.MaxPlausibleScore(1, daily: false) * 2;
+        Assert.Equal(doubled, HighScoreValidator.MaxPlausibleScore(1, daily: true));
+        Assert.True(ParseOn($$"""{"name":"ABC","score":{{doubled}},"wave":1,"mode":"daily","day":"20261013"}""", out _, out _));
+        Assert.False(ParseOn($$"""{"name":"ABC","score":{{doubled}},"wave":1}""", out _, out _));
+    }
 
     [Theory]
     [InlineData("not json")]
     [InlineData("null")]
-    [InlineData("""{"name":"ABC","score":1e20}""")]
+    [InlineData("""{"name":"ABC","score":1e20,"wave":1}""")]
     public void MalformedBody_IsRejected(string json) =>
         Assert.False(Parse(json, out _, out _));
 
@@ -63,7 +117,7 @@ public class HighScoreValidatorTests
     [Fact]
     public void AllTimeScore_GoesToAllTimePartition()
     {
-        Assert.True(ParseOn("""{"name":"ABC","score":100}""", out var score, out _));
+        Assert.True(ParseOn("""{"name":"ABC","score":100,"wave":1}""", out var score, out _));
         Assert.Null(score.Mode);
         Assert.Equal("HighScore", HighScoreValidator.PartitionFor(score));
     }
@@ -73,7 +127,7 @@ public class HighScoreValidatorTests
     [InlineData("20261012")]    // yesterday: a game that crossed midnight
     public void DailyScore_ForTodayOrYesterday_IsAccepted(string day)
     {
-        Assert.True(ParseOn($$"""{"name":"ABC","score":100,"mode":"daily","day":"{{day}}"}""", out var score, out _));
+        Assert.True(ParseOn($$"""{"name":"ABC","score":100,"wave":1,"mode":"daily","day":"{{day}}"}""", out var score, out _));
         Assert.Equal("daily", score.Mode);
         Assert.Equal($"Daily-{day}", HighScoreValidator.PartitionFor(score));
     }
@@ -86,15 +140,15 @@ public class HighScoreValidatorTests
     [InlineData("")]
     [InlineData("x' or 'a'='a")]
     public void DailyScore_ForOtherDays_IsRejected(string day) =>
-        Assert.False(ParseOn($$"""{"name":"ABC","score":100,"mode":"daily","day":"{{day}}"}""", out _, out _));
+        Assert.False(ParseOn($$"""{"name":"ABC","score":100,"wave":1,"mode":"daily","day":"{{day}}"}""", out _, out _));
 
     [Fact]
     public void DailyScore_WithoutDay_IsRejected() =>
-        Assert.False(ParseOn("""{"name":"ABC","score":100,"mode":"daily"}""", out _, out _));
+        Assert.False(ParseOn("""{"name":"ABC","score":100,"wave":1,"mode":"daily"}""", out _, out _));
 
     [Fact]
     public void UnknownMode_IsRejected() =>
-        Assert.False(ParseOn("""{"name":"ABC","score":100,"mode":"weekly","day":"20261013"}""", out _, out _));
+        Assert.False(ParseOn("""{"name":"ABC","score":100,"wave":1,"mode":"weekly","day":"20261013"}""", out _, out _));
 
     [Theory]
     [InlineData(null, null, "HighScore")]

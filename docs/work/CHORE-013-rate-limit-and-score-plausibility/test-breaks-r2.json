@@ -1,0 +1,12 @@
+{ "test": "dotnet test tests/BlazorInvaders.Tests --nologo",
+  "breaks": [
+  {"id":"Q-B1","description":"AC2/T2 IPv6 mask /64 to /96","file":"src/api/ScoreRateLimiter.cs","find":"Array.Clear(bytes, 8, 8);","replace":"Array.Clear(bytes, 12, 4);"},
+  {"id":"Q-B2","description":"TB2 CPU: early exit of MaxPlausibleScore removed","file":"src/api/HighScoreValidator.cs","find":"w <= wave && total <= MaxScore;","replace":"w <= wave;"},
+  {"id":"Q-B3","description":"AC2 expiry timer does nothing","file":"src/api/ScoreRateLimiter.cs","find":"time.CreateTimer(_ => Prune(time.GetUtcNow()), null, Window, Window);","replace":"time.CreateTimer(_ => { }, null, Window, Window);"},
+  {"id":"Q-B4","description":"AC1 inline prune never runs","file":"src/api/ScoreRateLimiter.cs","find":"if (now >= _lastPrune + InlinePruneInterval)","replace":"if (now < _lastPrune)"},
+  {"id":"Q-B5","description":"P6 inline-prune throttle off (prune on every full-table request)","file":"src/api/ScoreRateLimiter.cs","find":"        _lastPrune = now;","replace":"        _lastPrune = DateTimeOffset.MinValue;"},
+  {"id":"Q-B6","description":"AC3 bound sums one wave too many","file":"src/api/HighScoreValidator.cs","find":"w <= wave && total","replace":"w <= wave + 1 && total"},
+  {"id":"Q-B7","description":"AC3 Boss Rush branch dropped","file":"src/api/HighScoreValidator.cs","find":"if (daily && w % BossRushEvery == 0)","replace":"if (false)"},
+  {"id":"Q-B8","description":"AC3 mothership allowance 200 to 150 per wave","file":"src/api/HighScoreValidator.cs","find":"MaxMotherShipsPerWave = 200;","replace":"MaxMotherShipsPerWave = 150;"},
+  {"id":"Q-B9","description":"AC2 prune boundary >= to >","file":"src/api/ScoreRateLimiter.cs","find":"_counters.Where(c => now >= c.Value.Start + Window)","replace":"_counters.Where(c => now > c.Value.Start + Window)"}
+]}
