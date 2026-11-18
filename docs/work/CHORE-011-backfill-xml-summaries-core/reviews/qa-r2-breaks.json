@@ -1,0 +1,12 @@
+{
+ "test": "dotnet build src/core/BlazorInvaders.Core.csproj --no-incremental -nologo -v q",
+ "breaks": [
+  {
+   "id": "B1",
+   "description": "AC1/AC2: drop a round 2 summary (GameEngine.HighScoreName)",
+   "file": "src/core/GameEngine.cs",
+   "find": "        /// <summary>Name for <see cref=\"HighScore\"/>, or null if the board is empty. Set only by <see cref=\"SetLeaderboard\"/>.</summary>",
+   "replace": ""
+  }
+ ]
+}

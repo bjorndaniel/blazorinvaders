@@ -9,6 +9,7 @@
 
 | ID | Name | Type | Size | Status | Branch | Opened | Updated | Cost |
 |----|------|------|------|--------|--------|--------|---------|------|
+| CHORE-011 | Backfill XML summaries in core | CHORE | M | done | devagents/CHORE-011-backfill-xml-summaries-core | 2026-11-17 | 2026-11-18 | $8.62 |
 | FEAT-002 | Larger phone canvas text | FEAT | S | done | devagents/FEAT-002-larger-phone-canvas-text | 2026-11-17 | 2026-11-18 | $12.54 |
 | FEAT-001 | Mute control | FEAT | M | done | devagents/FEAT-001-mute-control | 2026-11-17 | 2026-11-18 | $9.22 |
 | CHORE-013 | Rate limiting and score plausibility check | CHORE | M | done | devagents/CHORE-013-rate-limit-and-score-plausibility | 2026-11-17 | 2026-11-18 | $12.44 |

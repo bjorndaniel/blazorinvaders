@@ -3,11 +3,14 @@ using System.Text.Json.Serialization;
 
 namespace BlazorInvaders.GameObjects
 {
+    /// <summary>One leaderboard entry, in the shape the API stores and returns.</summary>
     public class HighScore
     {
+        /// <summary>The player's name.</summary>
         [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;
 
+        /// <summary>The points scored.</summary>
         [JsonPropertyName("score")]
         public int Score { get; set; }
 

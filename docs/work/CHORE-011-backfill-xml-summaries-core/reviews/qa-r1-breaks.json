@@ -1,0 +1,48 @@
+{
+ "test": "dotnet build src/core/BlazorInvaders.Core.csproj --no-incremental -nologo -v q",
+ "breaks": [
+  {
+   "id": "B1",
+   "description": "AC1/AC2: drop an enum member summary (SoundEffect.BossDefeated)",
+   "file": "src/core/GameObjects/Enumerations.cs",
+   "find": "        /// <summary>The boss was defeated.</summary>",
+   "replace": ""
+  },
+  {
+   "id": "B2",
+   "description": "AC1/AC2: drop a constructor summary (Boss ctor)",
+   "file": "src/core/GameObjects/Boss.cs",
+   "find": "        /// <summary>Creates a boss at full health with its left edge at <paramref name=\"x\"/> px.</summary>",
+   "replace": ""
+  },
+  {
+   "id": "B3",
+   "description": "AC1/AC2: drop a public const summary (ComboTracker.HitsPerLevel)",
+   "file": "src/core/GameObjects/ComboTracker.cs",
+   "find": "        /// <summary>Consecutive hits needed to raise the multiplier by one.</summary>",
+   "replace": ""
+  },
+  {
+   "id": "B4",
+   "description": "AC1/AC2: drop a required-init property summary in Rendering (Scene.Cmds)",
+   "file": "src/core/Rendering/Scene.cs",
+   "find": "        /// <summary>Op codes and their arguments, back to back.</summary>",
+   "replace": ""
+  },
+  {
+   "id": "B5",
+   "description": "AC1/AC2: drop a static method summary (GameEngine.QualifiesForLeaderboard)",
+   "file": "src/core/GameEngine.cs",
+   "find": "        /// <summary>True if <paramref name=\"points\"/> is above 0 and either fits on a board of fewer than 10 or beats its last score.</summary>",
+   "replace": ""
+  },
+  {
+   "id": "B6",
+   "description": "AC2: turn off doc generation; the doc XML must still be produced",
+   "file": "src/core/BlazorInvaders.Core.csproj",
+   "find": "<GenerateDocumentationFile>true</GenerateDocumentationFile>",
+   "replace": "<GenerateDocumentationFile>false</GenerateDocumentationFile>",
+   "test": "del /q src\\core\\bin\\Debug\\net10.0\\BlazorInvaders.Core.xml 2>nul & dotnet build src/core/BlazorInvaders.Core.csproj --no-incremental -nologo -v q && if not exist src\\core\\bin\\Debug\\net10.0\\BlazorInvaders.Core.xml exit 1"
+  }
+ ]
+}

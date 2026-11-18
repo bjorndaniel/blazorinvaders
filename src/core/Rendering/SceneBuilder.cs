@@ -175,6 +175,7 @@ namespace BlazorInvaders.Rendering
             return size;
         }
 
+        /// <summary>The label shown for a daily modifier; "NO MODIFIER" for none.</summary>
         public static string Describe(DailyModifier modifier) => modifier switch
         {
             DailyModifier.NoBunkers => "NO BUNKERS",
@@ -187,6 +188,7 @@ namespace BlazorInvaders.Rendering
 
         private static string FormatDate(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
+        /// <summary>Draws the engine's current state into a <see cref="Scene"/> for <paramref name="timeStamp"/> (ms). Also takes the engine's pending sounds and events, so call it once per frame.</summary>
         public Scene Build(GameEngine engine, float timeStamp)
         {
             _cmds.Clear();

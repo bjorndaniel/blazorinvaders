@@ -1,5 +1,6 @@
 namespace BlazorInvaders.GameObjects
 {
+    /// <summary>The game clock: total and per-frame elapsed time, in ms.</summary>
     public class GameTime
     {
         private float _totalTime = 0;

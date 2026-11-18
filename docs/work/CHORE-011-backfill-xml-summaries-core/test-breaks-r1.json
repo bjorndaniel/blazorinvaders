@@ -1,0 +1,1 @@
+{"test":"dotnet build src/core/BlazorInvaders.Core.csproj --no-incremental","breaks":[{"id":"B1","description":"AC2: drop GameTime summary","file":"src/core/GameObjects/GameTime.cs","find":"    /// <summary>The game clock: total and per-frame elapsed time, in ms.</summary>\n","replace":""}]}

@@ -9,12 +9,15 @@ namespace BlazorInvaders.GameObjects
     public class GameEngine
     {
         // Simulation runs in fixed 60 Hz steps regardless of display refresh rate
+        /// <summary>Length of one simulation step in ms.</summary>
         public const float StepMs = 1000f / 60f;
         private const int MaxStepsPerFrame = 5;
 
         // Pixels per step while a direction is held (360 px/s)
+        /// <summary>Player speed in px per step.</summary>
         public const int PlayerSpeed = 6;
 
+        /// <summary>Most lives the player can hold; extra lives stop adding beyond it.</summary>
         public const int MaxLives = 5;
         private const int DefaultBossEvery = 5;
         /// <summary>Points per boss hit before the combo multiplier. For tests.</summary>
@@ -92,6 +95,7 @@ namespace BlazorInvaders.GameObjects
         private int _marchCount = -1;
         private readonly List<GameEvent> _events = new();
 
+        /// <summary>Creates an engine for a playfield of <paramref name="width"/> by <paramref name="height"/> px. <paramref name="random"/> seeds each game's random streams, unless it is a daily challenge; null uses a fresh generator.</summary>
         public GameEngine(int width, int height, Random? random = null)
         {
             _width = width;
@@ -102,28 +106,43 @@ namespace BlazorInvaders.GameObjects
         /// <summary>Raised once when a game ends with a score good enough for the top 10.</summary>
         public event Action? QualifiedForLeaderboard;
 
+        /// <summary>Playfield width in px.</summary>
         public int Width => _width;
+        /// <summary>Playfield height in px.</summary>
         public int Height => _height;
+        /// <summary>True while a game is in progress, from <see cref="Start"/> until it ends.</summary>
         public bool Started { get; private set; }
+        /// <summary>True after the last life is lost, the aliens land or an alien reaches the ship, until the next <see cref="Start"/>.</summary>
         public bool GameOver { get; private set; }
+        /// <summary>True while the game is paused.</summary>
         public bool Paused { get; private set; }
+        /// <summary>The best score on the current board; 0 if it is empty. Raised at game end when a finished game beats it.</summary>
         public int HighScore { get; private set; }
+        /// <summary>Name for <see cref="HighScore"/>, or null if the board is empty. Set by <see cref="SetLeaderboard"/>, and by the host when a finished game takes the top spot.</summary>
         public string? HighScoreName { get; set; }
+        /// <summary>Score of the current game.</summary>
         public int Points => _points;
+        /// <summary>Lives left.</summary>
         public int Lives => _lives;
+        /// <summary>Current wave, starting at 1.</summary>
         public int Wave => _wave;
         /// <summary>Waves between bosses: 5, or 3 with the BossRush daily modifier.</summary>
         public int BossEvery { get; private set; } = DefaultBossEvery;
+        /// <summary>True when the current wave has a boss.</summary>
         public bool IsBossWave => _wave % BossEvery == 0;
         /// <summary>Today's challenge when this is a daily game, otherwise null.</summary>
         public DailyChallenge? Daily { get; private set; }
+        /// <summary>True when playing a daily challenge.</summary>
         public bool IsDaily => Daily != null;
         /// <summary>Points for clearing a wave without being hit (doubled in a Glass daily).</summary>
         public int PerfectWaveBonus => 500 * _scoreFactor;
         /// <summary>The boss on a boss wave, otherwise null.</summary>
         public Boss? Boss => _boss;
+        /// <summary>True while the double shot power-up is active.</summary>
         public bool DoubleShot => IsActive(PowerUpType.DoubleShot);
+        /// <summary>True while a shield is waiting to absorb a bomb.</summary>
         public bool HasShield => _shield;
+        /// <summary>True for 1 s after the player loses a life, for the HUD.</summary>
         public bool LostALife { get; private set; }
 
         /// <summary>Whether a power-up is in effect. Extra life is instant, so never active.</summary>
@@ -150,20 +169,33 @@ namespace BlazorInvaders.GameObjects
         /// <summary>Game clock in ms. Only advances while a game is running and unpaused.</summary>
         public float Time => _gameTime.TotalTime;
 
+        /// <summary>Aliens that are neither hit nor destroyed.</summary>
         public int AliveCount => _aliens.Count(a => !a.Destroyed && !a.HasBeenHit);
+        /// <summary>True when one alien is left.</summary>
         public bool IsFrenzy => AliveCount == 1;
+        /// <summary>True during the first 2 s of a wave.</summary>
         public bool ShowWaveBanner => Started && !GameOver && Time <= _waveDisplayUntil;
+        /// <summary>True while the perfect-wave bonus message is shown.</summary>
         public bool ShowPerfectBonus => Started && !GameOver && Time <= _perfectBonusUntil;
 
+        /// <summary>The aliens, including hit ones still exploding.</summary>
         public IReadOnlyList<Alien> Aliens => _aliens;
+        /// <summary>The player's shots in flight.</summary>
         public IReadOnlyList<Shot> Shots => _shots;
+        /// <summary>The bombs falling.</summary>
         public IReadOnlyList<Bomb> Bombs => _bombs;
+        /// <summary>The bunkers; empty with the NoBunkers daily modifier.</summary>
         public IReadOnlyList<Bunker> Bunkers => _bunkers;
+        /// <summary>The power-ups falling.</summary>
         public IReadOnlyList<PowerUp> PowerUps => _powerUps;
+        /// <summary>The leaderboard set by <see cref="SetLeaderboard"/>, best first, at most 10.</summary>
         public IReadOnlyList<HighScore> TopScores => _topScores;
+        /// <summary>The player's ship; null before the first game.</summary>
         public Player? Player => _player;
+        /// <summary>The mothership while it is crossing, otherwise null.</summary>
         public MotherShip? MotherShip => _motherShip;
 
+        /// <summary>True if <paramref name="points"/> is above 0 and either fits on a board of fewer than 10 or beats its last score.</summary>
         public static bool QualifiesForLeaderboard(int points, IReadOnlyList<HighScore> topScores) =>
             points > 0 && (topScores.Count < 10 || points > topScores[^1].Score);
 
@@ -178,6 +210,8 @@ namespace BlazorInvaders.GameObjects
             HighScoreName = _topScores.Count > 0 ? _topScores[0].Name : null;
         }
 
+        /// <summary>Begins a new game at <paramref name="time"/> and resets all game state.</summary>
+        /// <param name="time">Current timestamp in ms; becomes the game clock's starting point.</param>
         /// <param name="startWave">Wave to begin on; later waves start at the speed they would have reached.</param>
         /// <param name="daily">Play this day's challenge: its seed and modifier.</param>
         public void Start(float time, int startWave = 1, DailyChallenge? daily = null)
@@ -249,11 +283,13 @@ namespace BlazorInvaders.GameObjects
             }
         }
 
+        /// <summary>Flips <see cref="Paused"/>; it has no effect on the simulation until a game is running.</summary>
         public void TogglePause() => Paused = !Paused;
 
         /// <summary>Sets the controls currently held; applied on every step until changed.</summary>
         public void SetInput(GameInput input) => _input = input;
 
+        /// <summary>Fires the player's shot or volley, unless the shot limit or the rapid fire spacing forbids it. Does nothing before the first game.</summary>
         public void Fire()
         {
             if (_player == null) return;
@@ -302,6 +338,7 @@ namespace BlazorInvaders.GameObjects
         private void Raise(GameEventType type, Point position, Size size, int value = 0, int variant = 0) =>
             _events.Add(new GameEvent(type, position.X + size.Width / 2, position.Y + size.Height / 2, value, variant));
 
+        /// <summary>Advances the game to <paramref name="timeStamp"/> (ms) in fixed <see cref="StepMs"/> steps, at most 5 per call. Does nothing while paused or not started.</summary>
         public void Update(float timeStamp)
         {
             var elapsed = timeStamp - _lastTimeStamp;
