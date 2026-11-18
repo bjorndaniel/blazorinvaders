@@ -567,4 +567,293 @@ public class SceneBuilderTests
 
         AssertCentred(new SceneBuilder().Build(engine, t), width, $"PERFECT!  +{engine.PerfectWaveBonus}");
     }
+
+    // ---- Larger phone canvas text (FEAT-002) ----
+
+    private static readonly DailyChallenge TestDaily = new(new DateOnly(2026, 10, 13), DailyModifier.Glass);
+
+    private record TextBox(string Text, int Size, double Left, double Top, double Right, double Bottom);
+
+    private static List<TextBox> Boxes(Scene scene)
+    {
+        var boxes = new List<TextBox>();
+        foreach (var (_, a) in Decode(scene).Where(c => c.op == Scene.OpText))
+        {
+            var text = scene.Strings[a[0]];
+            var size = int.Parse(scene.Strings[a[3]].Split("px")[0]);
+            var w = SceneBuilder.EstimateWidth(text, size);
+            var left = a[5] == 1 ? a[1] - w / 2 : a[1];
+            var top = a[2] - 0.77 * size;
+            var bottom = a[2] + (text.IndexOfAny("gjpqy,;".ToCharArray()) >= 0 ? 0.243 * size : 0);
+            boxes.Add(new TextBox(text, size, left, top, left + w, bottom));
+        }
+        return boxes;
+    }
+
+    private static bool Intersects(TextBox a, TextBox b) =>
+        a.Left < b.Right && b.Left < a.Right && a.Top < b.Bottom && b.Top < a.Bottom;
+
+    /// <summary>A started game with a 5-digit Hi score and a combo, the widest HUD text.</summary>
+    private static GameEngine CrowdedHudEngine()
+    {
+        var hud = NewEngine();
+        hud.SetLeaderboard(new[] { new HighScore { Name = "WWW", Score = 99999 } });
+        hud.Start(0);
+        hud.ComboTracker.Count = 20;
+        return hud;
+    }
+
+    /// <summary>Scenes covering every screen and the crowded HUD states, built at <paramref name="scale"/>.</summary>
+    private static List<(string Name, Scene Scene)> PhoneScenes(float scale, bool touch)
+    {
+        SceneBuilder NewBuilder(bool muted = false)
+        {
+            var b = new SceneBuilder { TouchControls = touch, DisplayScale = scale, TodaysChallenge = TestDaily };
+            if (muted) b.Sound.Toggle();
+            return b;
+        }
+
+        var scenes = new List<(string, Scene)>();
+
+        var attractEngine = NewEngine();
+        for (var i = 0; i < 4; i++)
+            scenes.Add(($"attract {i}", AttractState(NewBuilder(), attractEngine, i)));
+        scenes.Add(("attract muted", NewBuilder(muted: true).Build(attractEngine, 0)));
+
+        var hud = CrowdedHudEngine();
+        foreach (var alien in hud.Aliens.Skip(1))
+            alien.HasBeenHit = true;
+        Assert.True(hud.IsFrenzy);
+        scenes.Add(("hud combo frenzy muted", NewBuilder(muted: true).Build(hud, 100)));
+
+        var banner = NewEngine();
+        banner.Start(0);
+        scenes.Add(("wave banner", NewBuilder().Build(banner, 0)));
+
+        var daily = NewEngine();
+        daily.Start(0, daily: TestDaily);
+        scenes.Add(("daily banner and tag", NewBuilder().Build(daily, 0)));
+
+        var boss = NewEngine();
+        boss.Start(0, startWave: 5);
+        var t = IdleUntil(boss, () => boss.LostALife);
+        Assert.True(boss.LostALife);
+        scenes.Add(("boss wave lost a life muted", NewBuilder(muted: true).Build(boss, t)));
+
+        var perfect = NewEngine();
+        perfect.Start(0, startWave: 5);
+        perfect.Boss!.Hp = 1;
+        t = ChaseAndShootBoss(perfect);
+        Assert.True(perfect.ShowPerfectBonus);
+        scenes.Add(("perfect", NewBuilder().Build(perfect, t)));
+
+        var over = NewEngine();
+        over.Start(0, daily: TestDaily);
+        t = IdleUntil(over, () => over.GameOver);
+        Assert.True(over.GameOver);
+        scenes.Add(("game over", NewBuilder().Build(over, t)));
+
+        var paused = NewEngine();
+        paused.Start(0);
+        t = Run(paused, 0, 4000);
+        paused.TogglePause();
+        scenes.Add(("paused muted", NewBuilder(muted: true).Build(paused, t)));
+
+        return scenes;
+    }
+
+    [Theory]
+    [InlineData(18, 0.41f, 30)]
+    [InlineData(18, 0.445f, 27)]
+    [InlineData(18, 1.0f, 18)]
+    [InlineData(36, 0.41f, 36)]
+    [InlineData(14, 0.41f, 14)]
+    [InlineData(10, 0.41f, 10)]
+    [InlineData(18, 0f, 18)]
+    [InlineData(18, -1f, 18)]
+    [InlineData(18, float.NaN, 18)]
+    [InlineData(18, 0.01f, 60)]
+    public void PhoneFontSize_RaisesMustReadTextToTheFloor(int design, float scale, int expected) =>
+        Assert.Equal(expected, SceneBuilder.PhoneFontSize(design, scale));
+
+    [Theory]
+    [InlineData(0.41f)]
+    [InlineData(0.445f)]
+    public void Phone_MustReadTextReachesTheFloor_AndFloorIsReported(float scale)
+    {
+        var floor = (int)Math.Ceiling(12 / scale);
+        foreach (var (name, scene) in PhoneScenes(scale, touch: true))
+        {
+            Assert.Equal(floor, scene.MinTextSize);
+            foreach (var box in Boxes(scene).Where(b => b.Size >= 18))
+                Assert.True(box.Size >= floor, $"{name}: '{box.Text}' is {box.Size} px, floor {floor}");
+        }
+    }
+
+    [Fact]
+    public void EstimateWidth_MatchesTheMeasuredFont()
+    {
+        Assert.InRange(SceneBuilder.EstimateWidth("Use the arrow buttons to move, FIRE to shoot", 30), 753, 800);
+        Assert.InRange(SceneBuilder.EstimateWidth("COMBO x4!", 30), 185, 196);
+        Assert.InRange(SceneBuilder.EstimateWidth("Score: 99999   Hi: 99999 WWW", 30), 551, 580);
+    }
+
+    [Theory]
+    [InlineData(0.41f)]
+    [InlineData(0.445f)]
+    public void Phone_TextStaysOnCanvas_AndDoesNotOverlap(float scale)
+    {
+        foreach (var (name, scene) in PhoneScenes(scale, touch: true))
+        {
+            var boxes = Boxes(scene);
+            foreach (var b in boxes)
+                Assert.True(b.Left >= 0 && b.Right <= Width && b.Top >= 0 && b.Bottom <= Height, $"{name}: '{b.Text}' leaves the canvas");
+
+            for (var i = 0; i < boxes.Count; i++)
+                for (var j = i + 1; j < boxes.Count; j++)
+                    if (boxes[i].Size >= 18 || boxes[j].Size >= 18)
+                        Assert.False(Intersects(boxes[i], boxes[j]), $"{name}: '{boxes[i].Text}' overlaps '{boxes[j].Text}'");
+
+            // The boss bar (x 285..585, y 36..44) is a rect, not text
+            if (name.StartsWith("boss"))
+                foreach (var b in boxes.Where(b => b.Size >= 18))
+                    Assert.False(b.Left < 585 && 285 < b.Right && b.Top < 44 && 36 < b.Bottom, $"{name}: '{b.Text}' covers the boss bar");
+
+            if (name == "daily banner and tag")
+            {
+                // The subtitle sits inside its backdrop: y 200..290
+                var sub = boxes.Single(b => b.Text.StartsWith("2026-10-13"));
+                Assert.InRange(sub.Top, Height / 2 - 50, Height / 2 + 40);
+                Assert.InRange(sub.Bottom, Height / 2 - 50, Height / 2 + 40);
+            }
+        }
+    }
+
+    [Fact]
+    public void Phone_CentredLinesKeepTheCentre()
+    {
+        foreach (var (_, scene) in PhoneScenes(0.41f, touch: true))
+            foreach (var line in TextCommands(scene).Where(t => t.Centred))
+                Assert.Equal(Width / 2, line.X);
+    }
+
+    [Theory]
+    [InlineData(30, 30, false, 61, 97)]
+    [InlineData(30, 30, true, 72, 108)]
+    [InlineData(27, 28, false, 58, 91)]
+    [InlineData(27, 28, true, 69, 102)]
+    public void HitAndPerfectBaselines_StackWhenEnlarged(int hitSize, int perfectSize, bool bossWave, int hit, int perfect)
+    {
+        var hitBaseline = SceneBuilder.HitBaseline(hitSize, bossWave);
+        Assert.Equal(hit, hitBaseline);
+        var perfectBaseline = SceneBuilder.PerfectBaseline(hitBaseline, hitSize, perfectSize);
+        Assert.Equal(perfect, perfectBaseline);
+        Assert.True(perfectBaseline - 0.77 * perfectSize > hitBaseline + 0.243 * hitSize);
+    }
+
+    [Fact]
+    public void HitAndPerfectBaselines_KeepDesignPositionsAtDesignSize()
+    {
+        Assert.Equal(55, SceneBuilder.HitBaseline(20, false));
+        Assert.Equal(55, SceneBuilder.HitBaseline(20, true));
+        Assert.Equal(80, SceneBuilder.PerfectBaseline(55, 20, 28));
+    }
+
+    [Fact]
+    public void Phone_FitCap_ShrinksLongLinesToTheCanvas()
+    {
+        var builder = new SceneBuilder { TouchControls = true, DisplayScale = 0.30f };
+        var scene = AttractState(builder, EngineOfWidth(Width), 2);
+        Assert.Equal(40, scene.MinTextSize);
+        var line = Boxes(scene).Single(b => b.Text.StartsWith("Use the arrow"));
+        Assert.InRange(line.Size, 26, 39);
+        Assert.True(line.Right - line.Left <= Width - 20);
+
+        var hud = CrowdedHudEngine();
+        var muted = new SceneBuilder { TouchControls = true, DisplayScale = 0.30f };
+        muted.Sound.Toggle();
+        var boxes = Boxes(muted.Build(hud, 100));
+        var header = boxes.Single(b => b.Text.StartsWith("Score:"));
+        var combo = boxes.Single(b => b.Text.StartsWith("COMBO"));
+        Assert.True(header.Right <= combo.Left);
+        Assert.True(combo.Right <= Width);
+        Assert.False(Intersects(combo, boxes.Single(b => b.Text == "SOUND OFF")));
+    }
+
+    private static void SetLostALife(GameEngine engine, bool value) =>
+        typeof(GameEngine).GetProperty(nameof(GameEngine.LostALife))!.SetValue(engine, value);
+
+    private static GameEngine PerfectEngine(out float time)
+    {
+        var engine = NewEngine();
+        engine.Start(0, startWave: 5);
+        engine.Boss!.Hp = 1;
+        time = ChaseAndShootBoss(engine);
+        Assert.True(engine.ShowPerfectBonus);
+        return engine;
+    }
+
+    [Theory]
+    [InlineData(0.41f)]
+    [InlineData(0.445f)]
+    public void Phone_PerfectSitsBelowTheEnlargedHitLine(float scale)
+    {
+        var engine = PerfectEngine(out var t);
+        SetLostALife(engine, true);
+        var boxes = Boxes(new SceneBuilder { TouchControls = true, DisplayScale = scale }.Build(engine, t));
+        var hit = boxes.Single(b => b.Text == "You were hit!");
+        var perfect = boxes.Single(b => b.Text.StartsWith("PERFECT!"));
+        Assert.True(hit.Size > 20);
+        Assert.True(perfect.Top > hit.Bottom, $"PERFECT top {perfect.Top} not below hit bottom {hit.Bottom}");
+    }
+
+    [Fact]
+    public void Phone_HitSizeDoesNotLeakIntoTheNextFrame()
+    {
+        var engine = PerfectEngine(out var t);
+        var builder = new SceneBuilder { TouchControls = true, DisplayScale = 0.41f };
+        SetLostALife(engine, true);
+        builder.Build(engine, t);
+        SetLostALife(engine, false);
+        var line = TextCommands(builder.Build(engine, t)).Single(c => c.Text.StartsWith("PERFECT!"));
+        Assert.Equal(80, line.Y);
+    }
+
+    [Fact]
+    public void Phone_FrenzyStaysBelowTheLoweredHeader()
+    {
+        var engine = NewEngine();
+        engine.Start(0);
+        foreach (var alien in engine.Aliens.Skip(1))
+            alien.HasBeenHit = true;
+        Assert.True(engine.IsFrenzy);
+        var boxes = Boxes(new SceneBuilder { TouchControls = true, DisplayScale = 0.30f }.Build(engine, 100));
+        var header = boxes.Single(b => b.Text.StartsWith("Score:"));
+        var frenzy = boxes.Single(b => b.Text == "FRENZY!");
+        Assert.False(Intersects(header, frenzy), $"header bottom {header.Bottom}, FRENZY top {frenzy.Top}");
+    }
+
+    [Fact]
+    public void ShrinkToFit_NeverGoesBelowTheDesignSize()
+    {
+        var method = typeof(SceneBuilder).GetMethod("ShrinkToFit", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        Assert.Equal(18, method.Invoke(null, new object[] { 30, 18, 2000f, 100f }));
+        Assert.Equal(26, method.Invoke(null, new object[] { 30, 18, 1000f, 870f }));
+        Assert.Equal(30, method.Invoke(null, new object[] { 30, 18, 500f, 870f }));
+    }
+
+    [Fact]
+    public void Desktop_IgnoresTheScale()
+    {
+        var expected = PhoneScenes(1f, touch: false);
+        var actual = PhoneScenes(0.41f, touch: false);
+
+        Assert.Equal(expected.Count, actual.Count);
+        for (var i = 0; i < expected.Count; i++)
+        {
+            Assert.Equal(expected[i].Scene.Cmds, actual[i].Scene.Cmds);
+            Assert.Equal(expected[i].Scene.Strings, actual[i].Scene.Strings);
+            Assert.Equal(0, actual[i].Scene.MinTextSize);
+        }
+    }
 }

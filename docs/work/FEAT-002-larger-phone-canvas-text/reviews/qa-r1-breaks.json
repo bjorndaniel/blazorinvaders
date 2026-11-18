@@ -1,0 +1,13 @@
+{ "test": "dotnet test tests/BlazorInvaders.Tests --nologo --filter FullyQualifiedName~SceneBuilderTests",
+  "breaks": [
+   {"id":"B1","description":"AC1 must-read boundary: < to <= (18 px text not enlarged)","file":"src/core/Rendering/SceneBuilder.cs","find":"if (designSize < MustReadSize || !float.IsFinite(scale)","replace":"if (designSize <= MustReadSize || !float.IsFinite(scale)"},
+   {"id":"B2","description":"Bad scale guard: scale <= 0 to < 0","file":"src/core/Rendering/SceneBuilder.cs","find":"!float.IsFinite(scale) || scale <= 0)","replace":"!float.IsFinite(scale) || scale < 0)"},
+   {"id":"B3","description":"AC2 fit cap overshoots by 3 px","file":"src/core/Rendering/SceneBuilder.cs","find":"size = Math.Max(designSize, (int)Math.Floor(size * space / width));","replace":"size = Math.Max(designSize, (int)Math.Floor(size * space / width) + 3);"},
+   {"id":"B4","description":"Fit cap may shrink below design size","file":"src/core/Rendering/SceneBuilder.cs","find":"size = Math.Max(designSize, (int)Math.Floor(size * space / width));","replace":"size = (int)Math.Floor(size * space / width);"},
+   {"id":"B5","description":"AC2 HUD row: combo width left out of the shared fit","file":"src/core/Rendering/SceneBuilder.cs","find":"var width = EstimateWidth(header, size) + (combo == null ? 0 : EstimateWidth(combo, size));","replace":"var width = EstimateWidth(header, size);"},
+   {"id":"B6","description":"AC2 header baseline not lowered when enlarged","file":"src/core/Rendering/SceneBuilder.cs","find":"var baseline = enlarged ? RaisedBaseline(hudSize) : HeaderBaseline;","replace":"var baseline = HeaderBaseline;"},
+   {"id":"B7","description":"AC2 FRENZY not shifted with the header","file":"src/core/Rendering/SceneBuilder.cs","find":"Text(\"FRENZY!\", 10, 45 + _hudShift, 16","replace":"Text(\"FRENZY!\", 10, 45, 16"},
+   {"id":"B8","description":"AC2 hit line ignores the boss wave (overlaps bar)","file":"src/core/Rendering/SceneBuilder.cs","find":"_hitY = HitBaseline(_hitSize, engine.Boss is { Defeated: false });","replace":"_hitY = HitBaseline(_hitSize, false);"},
+   {"id":"B9","description":"AC2 PERFECT wiring: always design y even with enlarged hit line","file":"src/core/Rendering/SceneBuilder.cs","find":"var perfectY = _hitSize > HitDesignSize ? PerfectBaseline(_hitY, _hitSize, perfectSize) : PerfectBaselineDesign;","replace":"var perfectY = PerfectBaselineDesign;"},
+   {"id":"B10","description":"Stale hit size: per-frame reset dropped","file":"src/core/Rendering/SceneBuilder.cs","find":"            _hitSize = 0;\n","replace":"\n"}
+  ]}

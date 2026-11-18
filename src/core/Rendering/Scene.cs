@@ -30,6 +30,12 @@ namespace BlazorInvaders.Rendering
         /// <summary>All sound off; game.js silences its master gain. Reaches JS as muted.</summary>
         public bool Muted { get; init; }
 
+        /// <summary>
+        /// Smallest font size in logical px for floating labels of 18 px design size and up; 0 when not on a touch screen.
+        /// Reaches JS as minTextSize; must match effects.js.
+        /// </summary>
+        public int MinTextSize { get; init; }
+
         /// <summary><see cref="GameObjects.SoundEffect"/> flags to play this frame.</summary>
         public int Sounds { get; init; }
 

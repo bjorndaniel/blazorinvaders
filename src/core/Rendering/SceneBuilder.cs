@@ -50,12 +50,24 @@ namespace BlazorInvaders.Rendering
         private readonly List<string> _strings = new();
         private readonly Dictionary<string, int> _stringIndex = new();
 
+        // Canvas width and HUD layout of the frame being built; "You were hit!" and "PERFECT!" share them
+        private int _canvasWidth;
+        private int _hudShift;
+        private int _hitSize;
+        private int _hitY;
+
         // Attract screen
         private int _attractState;
         private float _attractStateStart;
 
         /// <summary>Word on-screen instructions for the touch buttons instead of the keyboard.</summary>
         public bool TouchControls { get; set; }
+
+        /// <summary>
+        /// CSS pixels per logical canvas pixel, as measured by game.js. Must match the scale game.js
+        /// passes to Tick (canvas.clientWidth / viewWidth). Only used when <see cref="TouchControls"/> is true.
+        /// </summary>
+        public float DisplayScale { get; set; } = 1;
 
         /// <summary>The one copy of the mute state; the page toggles it and stores it.</summary>
         public SoundSetting Sound { get; set; } = new();
@@ -64,6 +76,104 @@ namespace BlazorInvaders.Rendering
         public DailyChallenge? TodaysChallenge { get; set; }
 
         private const string DailyColor = "#00E5FF";
+
+        // Phone text sizing (UX14): text of MustReadSize and up shows at least MinPhoneTextPx CSS px
+        private const int MinPhoneTextPx = 12;
+        private const int MustReadSize = 18;  // Must match MUST_READ_SIZE in effects.js
+        private const int MaxPhoneTextSize = 60;
+        private const int EdgeMargin = 10;
+        private const int HudGap = 20;
+        private const float WidthMargin = 1.05f;
+        private const float Ascent = 0.77f;
+        private const float Descent = 0.243f;
+        private const int HeaderBaseline = 22;
+        private const int HitBaselineDesign = 55;
+        private const int HitDesignSize = 20;
+        private const int PerfectBaselineDesign = 80;
+        private const int BossBarY = 36;
+        private const int BossBarHeight = 8;
+        private const int BossBarBottom = BossBarY + BossBarHeight;
+
+        // Advance widths in thousandths of an em for ASCII 32-126, from hmtx of wwwroot/fonts/orbitron-latin.woff2.
+        // Must match that font file; other characters count as 1000.
+        private static readonly short[] Advances =
+        {
+            272, 220, 372, 797, 788, 966, 938, 224, 277, 278, 491, 433, 193, 517, 214, 521,
+            834, 391, 830, 826, 730, 830, 820, 660, 834, 828, 214, 193, 473, 638, 475, 678,
+            832, 836, 832, 822, 834, 766, 723, 830, 851, 214, 780, 797, 779, 928, 832, 828,
+            791, 884, 825, 822, 759, 828, 1003, 1179, 812, 806, 821, 275, 520, 276, 1000, 828,
+            315, 694, 667, 695, 667, 692, 407, 683, 668, 208, 239, 646, 302, 978, 696, 692,
+            664, 664, 512, 686, 410, 695, 790, 1071, 692, 685, 698, 289, 214, 289, 404,
+        };
+
+        /// <summary>
+        /// The font size for text of <paramref name="designSize"/> at <paramref name="scale"/> (CSS px per logical px)
+        /// on a touch screen: text of 18 px and up is raised so it shows at 12 CSS px or more. Smaller text and
+        /// an unusable scale keep the design size.
+        /// </summary>
+        public static int PhoneFontSize(int designSize, float scale)
+        {
+            if (designSize < MustReadSize || !float.IsFinite(scale) || scale <= 0)
+                return designSize;
+            return Math.Min(MaxPhoneTextSize, Math.Max(designSize, (int)Math.Ceiling(MinPhoneTextPx / scale)));
+        }
+
+        /// <summary>Estimated width in logical px of <paramref name="text"/> in Orbitron at <paramref name="size"/>, with a safety margin.</summary>
+        internal static float EstimateWidth(string text, int size)
+        {
+            var total = 0;
+            foreach (var c in text)
+                total += c >= 32 && c <= 126 ? Advances[c - 32] : 1000;
+            return total * size / 1000f * WidthMargin;
+        }
+
+        /// <summary>Baseline of "You were hit!" at <paramref name="size"/>: the design position at the design size, lower when enlarged.</summary>
+        internal static int HitBaseline(int size, bool bossWave)
+        {
+            if (size <= HitDesignSize)
+                return HitBaselineDesign;
+            var baseline = HitBaselineDesign + RaisedBaseline(size) - HeaderBaseline;
+            return bossWave
+                ? Math.Max(baseline, BossBarBottom + 4 + (int)Math.Ceiling(Ascent * size))
+                : baseline;
+        }
+
+        /// <summary>Baseline of "PERFECT!" when "You were hit!" shows too: below it, or the design position when it is not enlarged.</summary>
+        internal static int PerfectBaseline(int hitBaseline, int hitSize, int perfectSize)
+        {
+            if (hitSize <= HitDesignSize)
+                return PerfectBaselineDesign;
+            return Math.Max(PerfectBaselineDesign,
+                hitBaseline + (int)Math.Ceiling(Descent * hitSize) + 4 + (int)Math.Ceiling(Ascent * perfectSize));
+        }
+
+        private static int RaisedBaseline(int size) => Math.Max(HeaderBaseline, (int)Math.Ceiling(Ascent * size) + 4);
+
+        private int Size(int designSize) => TouchControls ? PhoneFontSize(designSize, DisplayScale) : designSize;
+
+        // An enlarged size of the given width, shrunk toward the design size when it would not fit in space
+        private static int ShrinkToFit(int size, int designSize, float width, float space) =>
+            width > space ? Math.Max(designSize, (int)Math.Floor(size * space / width)) : size;
+
+        // The enlarged size, shrunk toward the design size when the line would not fit in space
+        private int FitSize(string text, int designSize, float space)
+        {
+            var size = Size(designSize);
+            return size > designSize ? ShrinkToFit(size, designSize, EstimateWidth(text, size), space) : size;
+        }
+
+        // Header and combo share one row: one common size so both fit side by side
+        private int HudSize(string header, string? combo, int w)
+        {
+            var size = Size(MustReadSize);
+            if (size > MustReadSize)
+            {
+                var width = EstimateWidth(header, size) + (combo == null ? 0 : EstimateWidth(combo, size));
+                var space = w - 2 * EdgeMargin - (combo == null ? 0 : HudGap);
+                size = ShrinkToFit(size, MustReadSize, width, space);
+            }
+            return size;
+        }
 
         public static string Describe(DailyModifier modifier) => modifier switch
         {
@@ -85,12 +195,21 @@ namespace BlazorInvaders.Rendering
 
             var w = engine.Width;
             var h = engine.Height;
+            _canvasWidth = w;
 
             var header = $"Score: {engine.Points:D5}   Hi: {engine.HighScore} {engine.HighScoreName}";
-            Text(header, 10, 22, 18, White);
-
-            if (engine.Started && engine.Multiplier > 1)
-                Text($"COMBO x{engine.Multiplier}", w - 170, 22, 18, Gold);
+            var combo = engine.Started && engine.Multiplier > 1 ? $"COMBO x{engine.Multiplier}" : null;
+            var hudSize = HudSize(header, combo, w);
+            var enlarged = hudSize > MustReadSize;
+            var baseline = enlarged ? RaisedBaseline(hudSize) : HeaderBaseline;
+            _hudShift = baseline - HeaderBaseline;
+            TextAt(header, 10, baseline, hudSize, White);
+            if (combo != null)
+            {
+                var comboX = enlarged ? w - EdgeMargin - (int)Math.Ceiling(EstimateWidth(combo, hudSize)) : w - 170;
+                TextAt(combo, comboX, baseline, hudSize, Gold);
+            }
+            _hitSize = 0;
 
             if (engine.GameOver)
                 GameOverScreen(w, h);
@@ -118,7 +237,12 @@ namespace BlazorInvaders.Rendering
             }
 
             if (engine.ShowPerfectBonus)
-                CenteredText($"PERFECT!  +{engine.PerfectWaveBonus}", w, 80, 28, Gold);
+            {
+                var perfect = $"PERFECT!  +{engine.PerfectWaveBonus}";
+                var perfectSize = FitSize(perfect, 28, w - 2 * EdgeMargin);
+                var perfectY = _hitSize > HitDesignSize ? PerfectBaseline(_hitY, _hitSize, perfectSize) : PerfectBaselineDesign;
+                TextAt(perfect, w / 2, perfectY, perfectSize, Gold, centered: true);
+            }
 
             if (engine.Paused)
             {
@@ -140,6 +264,7 @@ namespace BlazorInvaders.Rendering
                 Events = events,
                 Paused = engine.Paused,
                 Muted = Sound.Muted,
+                MinTextSize = TouchControls ? PhoneFontSize(MustReadSize, DisplayScale) : 0,
                 Sounds = (int)sounds,
                 March = march,
             };
@@ -202,10 +327,14 @@ namespace BlazorInvaders.Rendering
             }
 
             if (engine.LostALife)
-                CenteredText("You were hit!", w, 55, 20, "red");
+            {
+                _hitSize = FitSize("You were hit!", HitDesignSize, w - 2 * EdgeMargin);
+                _hitY = HitBaseline(_hitSize, engine.Boss is { Defeated: false });
+                TextAt("You were hit!", w / 2, _hitY, _hitSize, "red", centered: true);
+            }
 
             if (engine.IsFrenzy)
-                Text("FRENZY!", 10, 45, 16, "#FF4444");
+                Text("FRENZY!", 10, 45 + _hudShift, 16, "#FF4444");
 
             if (engine.Player is { } player)
             {
@@ -261,7 +390,7 @@ namespace BlazorInvaders.Rendering
             var tint = time - boss.LastHitTime < 80 ? "#ffffff" : BossPhaseTints[boss.Phase];
             Sprite(Boss.ShipSprite, boss.Position.X, boss.Position.Y, Boss.Size.Width, Boss.Size.Height, tint);
 
-            const int barWidth = 300, barHeight = 8, barY = 36;
+            const int barWidth = 300, barHeight = BossBarHeight, barY = BossBarY;
             var barX = w / 2 - barWidth / 2;
             var fill = boss.Hp * barWidth / boss.MaxHp;
             Text("BOSS", barX - 60, barY + 9, 14, MotherShipRed);
@@ -377,6 +506,12 @@ namespace BlazorInvaders.Rendering
         }
 
         private void Text(string text, int x, int y, int fontSize, string color, bool centered = false)
+        {
+            var space = centered ? _canvasWidth - 2 * EdgeMargin : _canvasWidth - x - EdgeMargin;
+            TextAt(text, x, y, FitSize(text, fontSize, space), color, centered);
+        }
+
+        private void TextAt(string text, int x, int y, int fontSize, string color, bool centered = false)
         {
             _cmds.Add(Scene.OpText);
             _cmds.Add(Str(text));

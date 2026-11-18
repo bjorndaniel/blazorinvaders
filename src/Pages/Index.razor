@@ -121,10 +121,14 @@
         _dotNetRef?.Dispose();
     }
 
-    /// <summary>Called by game.js once per animation frame with the controls held and pressed since the last frame.</summary>
+    /// <summary>
+    /// Called by game.js once per animation frame with the controls held and pressed since the last frame,
+    /// and the canvas's CSS px per logical px. The arguments must match the Tick call in game.js.
+    /// </summary>
     [JSInvokable]
-    public async ValueTask<Scene> Tick(float timeStamp, int input)
+    public async ValueTask<Scene> Tick(float timeStamp, int input, float scale)
     {
+        _scenes.DisplayScale = scale;
         if (_disableKeyboard)
             input = 0;
 

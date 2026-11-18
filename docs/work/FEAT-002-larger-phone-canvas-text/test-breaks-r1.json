@@ -1,0 +1,9 @@
+{ "test": "dotnet test tests/BlazorInvaders.Tests --nologo",
+  "breaks": [
+   {"id":"B1","description":"AC1 floor: Ceiling to Floor","file":"src/core/Rendering/SceneBuilder.cs","find":"(int)Math.Ceiling(MinPhoneTextPx / scale)","replace":"(int)Math.Floor(MinPhoneTextPx / scale)"},
+   {"id":"B2","description":"AC1 floor constant 12 to 11","file":"src/core/Rendering/SceneBuilder.cs","find":"MinPhoneTextPx = 12;","replace":"MinPhoneTextPx = 11;"},
+   {"id":"B3","description":"AC3 desktop: Size ignores TouchControls","file":"src/core/Rendering/SceneBuilder.cs","find":"private int Size(int designSize) => TouchControls ? PhoneFontSize(designSize, DisplayScale) : designSize;","replace":"private int Size(int designSize) => PhoneFontSize(designSize, DisplayScale);"},
+   {"id":"B4","description":"AC1 MinTextSize wrong on touch","file":"src/core/Rendering/SceneBuilder.cs","find":"MinTextSize = TouchControls ? PhoneFontSize(MustReadSize, DisplayScale) : 0,","replace":"MinTextSize = TouchControls ? 0 : 0,"},
+   {"id":"B5","description":"AC2 combo right-aligned: left offset","file":"src/core/Rendering/SceneBuilder.cs","find":"w - EdgeMargin - (int)Math.Ceiling(EstimateWidth(combo, hudSize))","replace":"w - 170"},
+   {"id":"B6","description":"AC2 width margin dropped","file":"src/core/Rendering/SceneBuilder.cs","find":"WidthMargin = 1.05f;","replace":"WidthMargin = 1.0f;"}
+  ]}

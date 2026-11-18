@@ -28,6 +28,7 @@ const tintedSheets = new Map();
 
 let viewWidth = 0;
 let viewHeight = 0;
+let gameCanvas = null;
 
 // Input: keys held, touch buttons held (pointerId -> bit), and presses not yet delivered to .NET
 let keysHeld = 0;
@@ -65,6 +66,7 @@ export async function start(dotnetRef, canvas, container, touchRoot, width, heig
     dotnet = dotnetRef;
     ctx = context;
     viewWidth = width;
+    gameCanvas = canvas;
     viewHeight = height;
     sheet = image;
     starLayer = createStarLayer(width, height);
@@ -81,6 +83,7 @@ export function stop() {
     frameBusy = false;
     dotnet = null;
     ctx = null;
+    gameCanvas = null;
     unlisten();
     audio.stopMarch();
 }
@@ -103,7 +106,9 @@ function frame(timeStamp) {
     let input = keysHeld | pressed;
     for (const bit of touchesHeld.values()) input |= bit;
     pressed = 0;
-    dotnet.invokeMethodAsync('Tick', timeStamp, input)
+    // CSS px per logical px; must match Tick(timeStamp, input, scale) in Index.razor
+    const scale = gameCanvas && viewWidth ? gameCanvas.clientWidth / viewWidth : 1;
+    dotnet.invokeMethodAsync('Tick', timeStamp, input, scale)
         .then(scene => {
             if (current !== session) return;
             draw(scene);
@@ -245,7 +250,7 @@ function draw(scene) {
                 break;
             }
             case OP_EFFECTS:
-                effects.draw(ctx);
+                effects.draw(ctx, viewWidth);
                 i += 1;
                 break;
             default:

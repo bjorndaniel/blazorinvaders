@@ -30,7 +30,7 @@ A Space Invaders game in the browser, installable as a PWA that also plays offli
 | UX11 | Each canvas colour has one meaning. Cyan `#00E5FF` means the daily challenge. Gold `#FFD700` means rewards, scores and headings. Red `#ff4040` means danger, the boss and the mothership. `#888` is secondary text. The alien row colours, power-up colours and boss tints stay as defined. A new canvas colour is a named constant in `SceneBuilder.cs` (effects go in `effects.js`), never a literal elsewhere. | code |
 | UX12 | Canvas text and the touch buttons use Orbitron, self-hosted from `fonts/orbitron-latin.woff2`. HTML page text uses Bootstrap's font stack. Nothing loads fonts or assets from a CDN, because the app must work offline. | code, UX3 |
 | UX13 | Page styles live in `app.css` classes that use the colours above. New inline `style=` attributes are not added. The existing `color:#aaa` ones in `Index.razor` and `Leaderboard.razor` could become one class. | default rules |
-| UX14 | Canvas text is at least 14 px at the 870×500 logical size, except the 10 px power-up letter, which the HUD also names. Text the player must read during play (score, prompts) is at least 18 px. On touch screens, that text is drawn larger so that it shows at least 12 CSS px on a 375 px-wide phone, in portrait and landscape. The phone part is planned and not built yet. | code, D3, default rules |
+| UX14 | Canvas text is at least 14 px at the 870×500 logical size, except the 10 px power-up letter, which the HUD also names. Text the player must read during play (score, prompts) is at least 18 px. On touch screens, that text is drawn larger so that it shows at least 12 CSS px on a 375 px-wide phone, in portrait and landscape. The floor is `ceil(12 / scale)` logical px, from the canvas's measured CSS scale, for canvas text of 18 px and larger and floating labels of 18 px and larger; the 14 px labels (including "SOUND OFF") and the 10 px letter stay. A line that does not fit the canvas is shrunk toward its design size, never wrapped. | code, D3, default rules |
 
 ## Components and patterns
 | ID | Guideline | Source |
@@ -79,10 +79,7 @@ A Space Invaders game in the browser, installable as a PWA that also plays offli
 ## Known gaps
 None open. CHORE-014 fixed the five gaps D2 listed.
 
-Not built yet, in its own later item (D3): the larger phone text (UX14).
-
 ## Open questions
-- **Phone text size:** D3 asks for larger phone text but gives no size. The 12 CSS px in UX14 is my figure, taken from the platforms' minimum legible sizes (for example, Apple's 11 pt). Please confirm it or give another size when that item is planned.
 - **Not seen running:** this revision also comes from the code alone. No Playwright tools were available in this session, and the earlier preview failed because the disk was full.
 
 ## Revisions
@@ -96,3 +93,4 @@ Not built yet, in its own later item (D3): the larger phone text (UX14).
 - 2026-11-17 CHORE-014: fixed the five known gaps (UX24, UX32, UX33, UX38, UX43).
 - 2026-11-17 CHORE-008: removed the toast package reference from D4 and UX20; no toast package is used.
 - 2026-11-18 FEAT-001: built the mute control (UX29); M key in UX31, "Mute" in UX33, small-button grid in UX51; removed it from Known gaps.
+- 2026-11-18 FEAT-002: built the larger phone canvas text (UX14); removed it from Known gaps and the resolved "Phone text size" question (12 CSS px confirmed).

@@ -21,6 +21,8 @@ let shake = { strength: 0, start: 0, duration: 0 };
 let flash = { start: 0, duration: 0 };
 let clock = 0;      // effect time in ms; stands still while the game is paused
 let lastNow = 0;
+let textFloor = 0;  // Scene.MinTextSize; 0 off touch screens. Must match Scene.cs
+const MUST_READ_SIZE = 18;  // Must match SceneBuilder.MustReadSize
 
 export function reset() {
     particles = [];
@@ -31,7 +33,8 @@ export function reset() {
 }
 
 /** Advances effects by real elapsed time and spawns new ones for this frame's events. */
-export function update(now, { events, strings, paused }) {
+export function update(now, { events, strings, paused, minTextSize }) {
+    textFloor = minTextSize || 0;
     // Clamp so a long gap (background tab) doesn't jump effects to their end
     const dt = lastNow && !paused ? Math.min(now - lastNow, 50) : 0;
     lastNow = now;
@@ -96,7 +99,7 @@ export function beginFrame(ctx) {
 }
 
 /** Draws particles and floating labels at the current point in the draw order. */
-export function draw(ctx) {
+export function draw(ctx, viewWidth) {
     for (const p of particles) {
         ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
         ctx.fillStyle = p.color;
@@ -109,7 +112,13 @@ export function draw(ctx) {
         ctx.font = l.font;
         ctx.globalAlpha = Math.max(0, 1 - t);
         ctx.fillStyle = l.color;
-        ctx.fillText(l.text, l.x, l.y - t * 30);
+        let x = l.x;
+        if (textFloor > 0) {
+            // Enlarged labels must not run off the canvas
+            const half = ctx.measureText(l.text).width / 2;
+            x = Math.max(half, Math.min(viewWidth - half, x));
+        }
+        ctx.fillText(l.text, x, l.y - t * 30);
     }
     ctx.globalAlpha = 1;
 }
@@ -153,6 +162,9 @@ function burst(x, y, color, count, speed) {
 }
 
 function addLabel(text, x, y, color, font = LABEL_FONT) {
+    // Labels of MUST_READ_SIZE design size and up (combo 20, boss 24) get the phone floor
+    const size = parseInt(font, 10);
+    if (textFloor > 0 && size >= MUST_READ_SIZE) font = `${Math.max(size, textFloor)}px Orbitron`;
     labels.push({ text, x, y, color, font, start: clock });
 }
 

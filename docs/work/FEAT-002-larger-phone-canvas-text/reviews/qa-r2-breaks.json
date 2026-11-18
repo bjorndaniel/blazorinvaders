@@ -1,0 +1,9 @@
+{ "test": "dotnet test tests/BlazorInvaders.Tests --nologo --filter FullyQualifiedName~SceneBuilderTests",
+  "breaks": [
+   {"id":"B4","description":"r1 survivor: fit cap may shrink below design size","file":"src/core/Rendering/SceneBuilder.cs","find":"Math.Max(designSize, (int)Math.Floor(size * space / width))","replace":"(int)Math.Floor(size * space / width)"},
+   {"id":"B7","description":"r1 survivor: FRENZY not shifted with the header","file":"src/core/Rendering/SceneBuilder.cs","find":"Text(\"FRENZY!\", 10, 45 + _hudShift, 16","replace":"Text(\"FRENZY!\", 10, 45, 16"},
+   {"id":"B9","description":"r1 survivor: PERFECT always at design y","file":"src/core/Rendering/SceneBuilder.cs","find":"var perfectY = _hitSize > HitDesignSize ? PerfectBaseline(_hitY, _hitSize, perfectSize) : PerfectBaselineDesign;","replace":"var perfectY = PerfectBaselineDesign;"},
+   {"id":"B10","description":"r1 survivor: per-frame _hitSize reset dropped","file":"src/core/Rendering/SceneBuilder.cs","find":"            _hitSize = 0;\n","replace":"\n"},
+   {"id":"B11","description":"FitSize no longer calls ShrinkToFit (long lines not capped)","file":"src/core/Rendering/SceneBuilder.cs","find":"return size > designSize ? ShrinkToFit(size, designSize, EstimateWidth(text, size), space) : size;","replace":"return size;"},
+   {"id":"B12","description":"HudSize ignores the combo gap and margins in the space","file":"src/core/Rendering/SceneBuilder.cs","find":"size = ShrinkToFit(size, MustReadSize, width, space);","replace":"size = ShrinkToFit(size, MustReadSize, width, w);"}
+  ]}
